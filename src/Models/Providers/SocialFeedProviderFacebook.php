@@ -1,9 +1,21 @@
 <?php
+namespace SilverstripeSocialFeed\Provider;
+use Silverstripe\Forms\LiteralField;
+use Silverstripe\Forms\DropdownField;
+use Silverstripe\Forms\RequiredFields;
+use SilverStripe\ORM\FieldType\DBField;
+use League\OAuth2\Client\Provider\Facebook;
+use Exception;
 
-use \League\OAuth2\Client\Provider\Facebook;
-
-class SocialFeedProviderFacebook extends SocialFeedProvider implements SocialFeedProviderInterface
+class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 {
+
+	/**
+	 * Defines the database table name
+	 * @var string
+	 */
+	private static $table_name = 'SocialFeedProviderFacebook';
+
 	private static $db = array(
 		'FacebookPageID' => 'Varchar(100)',
 		'FacebookAppID' => 'Varchar(400)',
@@ -13,11 +25,9 @@ class SocialFeedProviderFacebook extends SocialFeedProvider implements SocialFee
 	);
 
 	private static $singular_name = 'Facebook Provider';
-	private static $plural_name = 'Facebook Provider\'s';
+	private static $plural_name = 'Facebook Providers';
 
 	private static $summary_fields = array(
-		'Label',
-		'Enabled',
 		'FacebookPageID'
 	);
 

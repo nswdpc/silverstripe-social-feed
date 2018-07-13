@@ -1,9 +1,22 @@
 <?php
+namespace SilverstripeSocialFeed\Provider;
+use Silverstripe\Forms\LiteralField;
+use Silverstripe\Forms\DropdownField;
+use Silverstripe\Control\Director;
+use Silverstripe\Forms\RequiredFields;
+use SilverStripe\ORM\FieldType\DBField;
+use League\OAuth2\Client\Provider\Instagram;
+use Exception;
 
-use \League\OAuth2\Client\Provider\Instagram;
-
-class SocialFeedProviderInstagram extends SocialFeedProvider implements SocialFeedProviderInterface
+class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 {
+
+	/**
+	 * Defines the database table name
+	 * @var string
+	 */
+	private static $table_name = 'SocialFeedProviderInstagram';
+
 	private static $db = array(
 		'ClientID' => 'Varchar(400)',
 		'ClientSecret' => 'Varchar(400)',
@@ -11,7 +24,7 @@ class SocialFeedProviderInstagram extends SocialFeedProvider implements SocialFe
 	);
 
 	private static $singular_name = 'Instagram Provider';
-	private static $plural_name = 'Instagram Provider\'s';
+	private static $plural_name = 'Instagram Providers';
 
 	private $authBaseURL = 'https://api.instagram.com/oauth/authorize/';
 
@@ -42,7 +55,8 @@ class SocialFeedProviderInstagram extends SocialFeedProvider implements SocialFe
 	 */
 	private function getRedirectUri()
 	{
-		return Director::absoluteBaseURL() . 'admin/social-feed/' . $this->ClassName . '/';
+
+		return Director::absoluteBaseURL() . 'admin/social-feed/' . $this->sanitiseClassName() . '/';
 	}
 
 	/**
@@ -100,13 +114,13 @@ class SocialFeedProviderInstagram extends SocialFeedProvider implements SocialFe
 				$errorHelpMessage = ' -- Go here '.$cmsLink.' and click "Authorize App to get Access Token" to restore Instagram feed.';
 			}
 			// Throw warning as we don't want the whole site to go down if Instagram starts failing.
-			user_error($e->getMessage() . $errorHelpMessage, E_USER_WARNING);
+			// user_error($e->getMessage() . $errorHelpMessage, E_USER_WARNING);
 			$result['data'] = array();
 		}
 		return $result['data'];
 	}
 
-	/** 
+	/**
 	 * @return HTMLText
 	 */
 	public function getPostContent($post) {

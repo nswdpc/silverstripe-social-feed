@@ -1,7 +1,24 @@
 ---
 Name: socialfeed
 ---
-
-ContentController:
+# job frequency feed
+SilverstripeSocialFeed\Jobs:
+  time_offset: 900
+# cache lifetime for a feed
+SilverstripeSocialFeed\Provider:
+  default_cache_lifetime: 1800
+  migrate_classnames: false
+# cache backend
+SilverStripe\Core\Injector\Injector:
+  Psr\SimpleCache\CacheInterface.socialfeedcache:
+    factory: SilverStripe\Core\Cache\CacheFactory
+    constructor:
+      namespace: 'socialfeedcache'
+# CMS extensions, if installed
+---
+Only:
+  moduleexists: 'silverstripe/cms'
+---
+SilverStripe\CMS\Controllers\ContentController:
   extensions:
-    - SocialFeedControllerExtension
+    -  SilverstripeSocialFeed\Extensions\SocialFeedControllerExtension

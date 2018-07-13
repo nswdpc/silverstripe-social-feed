@@ -1,9 +1,21 @@
 <?php
+namespace SilverstripeSocialFeed\Provider;
+use Silverstripe\Forms\LiteralField;
+use Silverstripe\Forms\RequiredFields;
+use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\FieldType\DBHTMLText;
+use Abraham\TwitterOAuth\TwitterOAuth;
+use Exception;
 
-use \Abraham\TwitterOAuth\TwitterOAuth;
-
-class SocialFeedProviderTwitter extends SocialFeedProvider implements SocialFeedProviderInterface
+class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 {
+
+	/**
+	 * Defines the database table name
+	 * @var string
+	 */
+	private static $table_name = 'SocialFeedProviderTwitter';
+
 	private static $db = array (
 		'ConsumerKey' => 'Varchar(400)',
 		'ConsumerSecret' => 'Varchar(400)',
@@ -13,7 +25,7 @@ class SocialFeedProviderTwitter extends SocialFeedProvider implements SocialFeed
 	);
 
 	private static $singular_name = 'Twitter Provider';
-	private static $plural_name = 'Twitter Provider\'s';
+	private static $plural_name = 'Twitter Providers';
 
 	private $type = 'twitter';
 
@@ -56,14 +68,14 @@ class SocialFeedProviderTwitter extends SocialFeedProvider implements SocialFeed
 		return $result;
 	}
 
-	/** 
-	 * @return HTMLText
+	/**
+	 * @return DBHTMLText
 	 */
 	public function getPostContent($post) {
 		$text = isset($post->text) ? $post->text : '';
-		$text = preg_replace('/(https?:\/\/[a-z0-9\.\/]+)/i', '<a href="$1" target="_blank">$1</a>', $text); 
+		$text = preg_replace('/(https?:\/\/[a-z0-9\.\/]+)/i', '<a href="$1" target="_blank">$1</a>', $text);
 
-		$result = DBField::create_field('HTMLText', $text);
+		$result = DBField::create_field(DBHTMLText::class, $text);
 		return $result;
 	}
 

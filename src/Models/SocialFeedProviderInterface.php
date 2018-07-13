@@ -1,6 +1,7 @@
 <?php
+namespace SilverstripeSocialFeed\Provider;
 
-interface SocialFeedProviderInterface
+interface ProviderInterface
 {
 	public function getType();
 	public function getFeed();
