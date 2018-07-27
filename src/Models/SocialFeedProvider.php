@@ -9,6 +9,8 @@ use Silverstripe\ORM\ArrayList;
 use Silverstripe\ORM\DB;
 use Silverstripe\Core\Convert;
 use SilverStripe\ORM\FieldType\DBDatetime;
+use SilverStripe\ORM\FieldType\DBField;
+use SilverStripe\ORM\FieldType\DBHTMLText;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Core\Injector\Injector;
 use Exception;
@@ -101,9 +103,11 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	public function getType() {
 		throw new Exception("Do not instantiate {$this->ClassName}::getType");
 	}
-
-	public function getPostContent($post) {
+	public function getPostContent($post, $strip_html = true) {
 		throw new Exception("Do not instantiate {$this->ClassName}::getPostContent");
+	}
+	public function getRawPostContent($post) {
+		throw new Exception("Do not instantiate {$this->ClassName}::getRawPostContent");
 	}
 	public function getPostCreated($post) {
 		throw new Exception("Do not instantiate {$this->ClassName}::getPostCreated");
@@ -116,6 +120,60 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	}
 	public function getImage($post) {
 		throw new Exception("Do not instantiate {$this->ClassName}::getImage");
+	}
+	public function getImageLowRes($post) {
+		throw new Exception("Do not instantiate {$this->ClassName}::getImageLowRes");
+	}
+	public function getImageThumb($post) {
+		throw new Exception("Do not instantiate {$this->ClassName}::getImageThumb");
+	}
+
+
+	/**
+	 * Given some text, process it and return is as an HTMLText field, maybe for a template
+	 * @param string $text
+	 * @param boolean strip_html
+	 * @returns SilverStripe\ORM\FieldType\DBHTMLText
+	 */
+	public function processTextContent($text, $strip_html = true) {
+		if($strip_html) {
+			$text = strip_tags($text);
+		}
+		// replace any links with <a> tags
+		$text = $this->replaceLinks($text);
+		$result = DBField::create_field(DBHTMLText::class, $text);
+		return $result;
+	}
+
+	/**
+	 * Given a string that may contain URLs, replace these URLs with <a> tags
+	 */
+	protected function replaceLinks($string, $target = "_blank") {
+		$pattern = '/(https?:\/\/[^\s]+)/i';
+		$target_attribute = "";
+		if($target) {
+			$target_attribute = " target=\"{$target}\"";
+		}
+		$string = preg_replace($pattern, "<a href=\"$1\"{$target_attribute}>$1</a>", $string);
+		return $string;
+	}
+
+	/**
+	 * Factory method to get Enabled social feed providers of the provided class name. You do the sorting if there is more than one provider returned.
+	 * @param string $provider_class_name representing a provider that is a child of {@link SilverstripeSocialFeed\Provider\SocialFeedProvider}
+	 * @param mixed  $enabled true|false|null - whether to return enabled/not enabled/all matching providers. The default is "Enabled=1"
+	 * @returns Silverstripe\ORM\DataList
+	 */
+	public static function getProvider($provider_class_name, $enabled = true) {
+		$sng = singleton($provider_class_name);
+		if(!($sng instanceof SocialFeedProvider) || $provider_class_name == 'SocialFeedProvider') {
+			return;
+		}
+		$list =  DataObject::get( $sng->getClassName() );
+		if(!is_null($enabled)) {
+			$list = $list->filter( ['Enabled' => $enabled] );
+		}
+		return $list;
 	}
 
 	/**
@@ -138,15 +196,17 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 			foreach ($feed as $post) {
 				$created = DBDatetime::create();
 				$created->setValue($this->getPostCreated($post));
-
 				$data[] = array(
 					'Type' => $this->getType(),
 					'Content' => $this->getPostContent($post),
+					'RawContent' => $this->getPostContent($post, false),
 					'Created' => $created,
 					'URL' => $this->getPostUrl($post),
 					'Data' => $post,
 					'UserName' => $this->getUserName($post),
-					'Image' => $this->getImage($post)
+					'Image' => $this->getImage($post),
+					'ImageLowRes' => $this->getImageLowRes($post),
+					'ImageThumb' => $this->getImageThumb($post),
 				);
 			}
 		}

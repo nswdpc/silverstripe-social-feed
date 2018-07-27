@@ -123,10 +123,9 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 	/**
 	 * @return HTMLText
 	 */
-	public function getPostContent($post) {
+	public function getPostContent($post, $strip_html = true) {
 		$text = isset($post['caption']['text']) ? $post['caption']['text'] : '';
-		$result = DBField::create_field('HTMLText', $text);
-		return $result;
+		return parent::processTextContent($text, $strip_html);
 	}
 
 	/**
@@ -137,7 +136,7 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getPostCreated($post)
 	{
-		return $post['created_time'];
+		return isset($post['created_time']) ? $post['created_time'] : '';
 	}
 
 	/**
@@ -148,7 +147,7 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getPostUrl($post)
 	{
-		return $post['link'];
+		return isset($post['link']) ? $post['link'] : '';
 	}
 
 	/**
@@ -159,7 +158,7 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getUserName($post)
 	{
-		return $post['user']['username'];
+		return isset($post['user']['username']) ? $post['user']['username'] : '';
 	}
 
 	/**
@@ -170,6 +169,25 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImage($post)
 	{
-		return $post['images']['standard_resolution']['url'];
+		return isset($post['images']['standard_resolution']['url']) ? $post['images']['standard_resolution']['url'] : '';
+	}
+
+
+
+	/**
+	 * Twitter's low res version of the feed image ~400w
+	 */
+	public function getImageLowRes($post)
+	{
+		return isset($post['images']['low_resolution']['url']) ? $post['images']['low_resolution']['url'] : '';
+		return $image;
+	}
+
+	/**
+	 * Twitter's thumb version of the feed image ~150w
+	 */
+	public function getImageThumb($post)
+	{
+		return isset($post['images']['thumb']['url']) ? $post['images']['thumb']['url'] : '';
 	}
 }

@@ -70,13 +70,22 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 
 	/**
 	 * @return DBHTMLText
+	 * @param stdClass $post
+	 * @param boolean $strip_html default true. If you want the raw content, set this to false or class getRawPostContent. It's up to you to render the content safely
+	 * @returns SilverStripe\ORM\FieldType\DBHTMLText
 	 */
-	public function getPostContent($post) {
+	public function getPostContent($post, $strip_html = true) {
 		$text = isset($post->text) ? $post->text : '';
-		$text = preg_replace('/(https?:\/\/[a-z0-9\.\/]+)/i', '<a href="$1" target="_blank">$1</a>', $text);
+		return parent::processTextContent($text, $strip_html);
+	}
 
-		$result = DBField::create_field(DBHTMLText::class, $text);
-		return $result;
+	/**
+	 * Return the post content *with* HTML unstripped
+	 * @returns SilverStripe\ORM\FieldType\DBHTMLText
+	 */
+	public function getRawPostContent($post) {
+		$text = $this->getPostContent($post, false);
+		return $text;
 	}
 
 	/**
@@ -87,7 +96,7 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getPostCreated($post)
 	{
-		return $post->created_at;
+		return isset($post->created_at) ? $post->created_at : '';
 	}
 
 	/**
@@ -98,7 +107,11 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getPostUrl($post)
 	{
-		return 'https://twitter.com/' . (string) $post->user->id .'/status/' . (string) $post->id;
+		if(isset($post->user->id) && isset($post->id)) {
+			return 'https://twitter.com/' . (string) $post->user->id .'/status/' . (string) $post->id;
+		} else {
+			return '';
+		}
 	}
 
 	/**
@@ -109,7 +122,7 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getUserName($post)
 	{
-		return $post->user->name;
+		return isset($post->user->name) ? $post->user->name : '';
 	}
 
 	/**
@@ -120,8 +133,26 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImage($post)
 	{
-		if(property_exists($post->entities, 'media') && $post->entities->media[0]->media_url_https) {
-			return $post->entities->media[0]->media_url_https;
+		return isset($post->entities->media[0]->media_url_https) ? $post->entities->media[0]->media_url_https : '';
+	}
+
+	/**
+	 * Twitter's low res version of the feed image ~400w
+	 */
+	public function getImageLowRes($post)
+	{
+		if($image = $this->getImage()) {
+			return $image . ":small";
+		}
+	}
+
+	/**
+	 * Twitter's thumb version of the feed image ~150w
+	 */
+	public function getImageThumb($post)
+	{
+		if($image = $this->getImage()) {
+			return $image . ":thumb";
 		}
 	}
 }

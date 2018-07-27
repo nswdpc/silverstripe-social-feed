@@ -15,21 +15,21 @@ class SocialFeedCacheTask extends BuildTask {
 		if( $providers = SocialFeedProvider::get()->filter('Enabled', 1) ) {
 			foreach ($providers as $provider) {
 				try {
-					$this->log('Getting feed for #'.$provider->ID.' ('.$provider->sanitiseClassName().')');
+					$this->log("Getting feed for #{$provider->ID} ({$provider->sanitiseClassName()})");
 					$feed = $provider->getFeedUncached();
 					$provider->setFeedCache($feed);
-					$this->log('Updated feed cache for #'.$provider->ID.' ('.$provider->sanitiseClassName().')');
+					$this->log("\tUpdated feed cache for #{$provider->ID} ({$provider->sanitiseClassName()})");
 					if($feed) {
-						$this->log("Got feed for {$provider->sanitiseClassName()}");
+						$this->log("\t\tGot feed for {$provider->sanitiseClassName()}");
 					} else {
-						$this->log("Empty feed for {$provider->sanitiseClassName()}");
+						$this->log("\t\tEmpty feed for {$provider->sanitiseClassName()}");
 					}
 				} catch (Exception $e) {
 					$this->log($e->getMessage(), "error");
 				}
 			}
 		} else {
-			$this->log('No SocialFeedProvider exist to be updated.');
+			$this->log('\tNo SocialFeedProvider records exist to be updated.');
 		}
 	}
 

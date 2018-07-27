@@ -93,7 +93,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 			// Get Facebook timestamps in Unix timestamp format
 			'date_format'  => 'U',
 			// Explicitly supply all known 'fields' as the API was returning a minimal fieldset by default.
-			'fields'	   => 'from,message,message_tags,story,story_tags,full_picture,source,link,object_id,name,caption,description,icon,privacy,type,status_type,created_time,updated_time,shares,is_hidden,is_expired,likes,comments',
+			'fields'	   => 'from,message,message_tags,story,story_tags,full_picture,picture,source,link,object_id,name,caption,description,icon,privacy,type,status_type,created_time,updated_time,shares,is_hidden,is_expired,likes,comments',
 			'access_token' => $accessToken,
 		);
 		$queryParameters = http_build_query($queryParameters);
@@ -120,10 +120,9 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	/**
 	 * @return HTMLText
 	 */
-	public function getPostContent($post) {
+	public function getPostContent($post, $strip_html = true) {
 		$text = isset($post['message']) ? $post['message'] : '';
-		$result = DBField::create_field('HTMLText', $text);
-		return $result;
+		return parent::processTextContent($text, $strip_html);
 	}
 
 	/**
@@ -134,7 +133,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getPostCreated($post)
 	{
-		return $post['created_time'];
+		return isset($post['created_time']) ? $post['created_time'] : '';
 	}
 
 	/**
@@ -162,7 +161,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getUserName($post)
 	{
-		return $post['from']['name'];
+		return isset($post['from']['name']) ? $post['from']['name'] : '';
 	}
 
 	/**
@@ -173,6 +172,31 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImage($post)
 	{
-		return (isset($post['full_picture'])) ? $post['full_picture'] : null;
+		return (isset($post['full_picture'])) ? $post['full_picture'] : '';
+	}
+
+	/**
+	 * Get the low res image for the post, which is currently just the full_picture as FB only returns either "full_picture" or "picture"
+	 *
+	 * @param $post
+	 * @return mixed
+	 */
+	public function getImageLowRes($post)
+	{
+		return $this->getImage($post);
+	}
+
+	/**
+	 * Get the thumb image for the post
+	 * The docs say:
+	 * 		"URL to a resized version of the Photo published in the Post or scraped from a link in the Post.
+	 * 		If the photo's largest dimension exceeds 130 pixels, it will be resized, with the largest dimension set to 130."
+	 *
+	 * @param $post
+	 * @return mixed
+	 */
+	public function getImageThumb($post)
+	{
+		return (isset($post['picture'])) ? $post['picture'] : '';
 	}
 }
