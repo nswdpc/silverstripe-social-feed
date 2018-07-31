@@ -19,6 +19,8 @@ class SocialFeedAdmin extends ModelAdmin
 
 	private static $menu_title = 'Social Feed';
 
+	private static $menu_icon_class = 'font-icon-torsos-all';
+
 	public function init()
 	{
 		parent::init();
