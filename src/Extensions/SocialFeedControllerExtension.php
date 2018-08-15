@@ -1,9 +1,9 @@
 <?php
 namespace SilverstripeSocialFeed\Extensions;
 use SilverstripeSocialFeed\Provider\SocialFeedProvider;
-use SilverstripeSocialFeed\Provider\Facebook;
-use SilverstripeSocialFeed\Provider\Twitter;
-use SilverstripeSocialFeed\Provider\Instagram;
+use SilverstripeSocialFeed\Provider\FacebookProvider;
+use SilverstripeSocialFeed\Provider\TwitterProvider;
+use SilverstripeSocialFeed\Provider\InstagramProvider;
 use Silverstripe\Control\Director;
 use Silverstripe\Core\Extension;
 use Silverstripe\ORM\ArrayList;
@@ -22,9 +22,9 @@ class SocialFeedControllerExtension extends Extension
 
 	public function SocialFeed()
 	{
-		$combinedData = $this->getProviderFeed(Instagram::get()->filter('Enabled', 1));
-		$combinedData = $this->getProviderFeed(Facebook::get()->filter('Enabled', 1), $combinedData);
-		$combinedData = $this->getProviderFeed(Twitter::get()->filter('Enabled', 1), $combinedData);
+		$combinedData = $this->getProviderFeed(InstagramProvider::get()->filter('Enabled', 1));
+		$combinedData = $this->getProviderFeed(FacebookProvider::get()->filter('Enabled', 1), $combinedData);
+		$combinedData = $this->getProviderFeed(TwitterProvider::get()->filter('Enabled', 1), $combinedData);
 
 		$result = new ArrayList($combinedData);
 		$result = $result->sort('Created', 'DESC');

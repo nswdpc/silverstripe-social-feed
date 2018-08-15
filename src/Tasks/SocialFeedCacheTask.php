@@ -3,6 +3,7 @@ namespace SilverstripeSocialFeed\Tasks;
 use SilverstripeSocialFeed\Provider\SocialFeedProvider;
 use SilverStripe\Dev\BuildTask;
 use SilverStripe\ORM\DB;
+use Exception;
 
 class SocialFeedCacheTask extends BuildTask {
 	protected $title       = 'Social Feed Pre-Load Task';
