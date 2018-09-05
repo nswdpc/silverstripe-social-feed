@@ -92,6 +92,11 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	public function getType() {
 		throw new Exception("Do not instantiate {$this->ClassName}::getType");
 	}
+
+	public function getPostType($post) {
+		return null;
+	}
+
 	public function getPostContent($post, $strip_html = true) {
 		throw new Exception("Do not instantiate {$this->ClassName}::getPostContent");
 	}
@@ -180,8 +185,8 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 			singleton( SocialFeedCacheQueuedJob::class )->createJob($this);
 		}
 
-		$data = array();
-		if ($feed) {
+		$data = [];
+		if (is_array($feed) && !empty($feed)) {
 			foreach ($feed as $post) {
 				$created = DBDatetime::create();
 				$post_created_date = $this->getPostCreated($post);
@@ -189,6 +194,7 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 				$created->setValue( $dt->format( DateTime::ISO8601 ) );
 				$data[] = array(
 					'Type' => $this->getType(),
+					'PostType' => $this->getPostType($post),
 					'Content' => $this->getPostContent($post),
 					'RawContent' => $this->getPostContent($post, false),
 					'Created' => $created,
@@ -238,7 +244,7 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 		$cache = $this->getCacheFactory();
 		$key = $this->getFeedCacheKey();
 		$feed = $cache->get($key);
-		return json_decode($feed);
+		return json_decode($feed, true);
 	}
 
 	/**
