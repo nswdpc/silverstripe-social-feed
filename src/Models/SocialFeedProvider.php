@@ -14,6 +14,7 @@ use SilverStripe\ORM\FieldType\DBHTMLText;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Core\Injector\Injector;
 use Exception;
+use DateTime;
 
 class SocialFeedProvider extends DataObject  implements ProviderInterface
 {
@@ -195,7 +196,9 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 		if ($feed) {
 			foreach ($feed as $post) {
 				$created = DBDatetime::create();
-				$created->setValue($this->getPostCreated($post));
+				$post_created_date = $this->getPostCreated($post);
+				$dt = new DateTime( $post_created_date );
+				$created->setValue( $dt->format( DateTime::ISO8601 ) );
 				$data[] = array(
 					'Type' => $this->getType(),
 					'Content' => $this->getPostContent($post),
