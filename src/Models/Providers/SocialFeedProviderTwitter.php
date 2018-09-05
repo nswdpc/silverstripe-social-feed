@@ -141,7 +141,7 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImageLowRes($post)
 	{
-		if($image = $this->getImage()) {
+		if($image = $this->getImage($post)) {
 			return $image . ":small";
 		}
 	}
@@ -151,7 +151,7 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImageThumb($post)
 	{
-		if($image = $this->getImage()) {
+		if($image = $this->getImage($post)) {
 			return $image . ":thumb";
 		}
 	}
