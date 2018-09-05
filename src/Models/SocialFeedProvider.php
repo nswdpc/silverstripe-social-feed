@@ -59,20 +59,8 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	 */
 	private static $default_cache_lifetime = 1800; // 15 minutes (900 seconds)
 
-	private static $migrate_classnames = false;
-
 	public function getTitle() {
 		return $this->Label;
-	}
-
-
-	public function requireDefaultRecords() {
-		if($this->config()->migrate_classnames) {
-			// migrate class names to SS4 namespaces if configured
-			DB::query("UPDATE SocialFeedProvider SET ClassName = '" . Convert::raw2sql("SilverstripeSocialFeed\Provider\TwitterProvider") . "' WHERE ClassName = 'SocialFeedProviderTwitter'");
-			DB::query("UPDATE SocialFeedProvider SET ClassName = '" . Convert::raw2sql("SilverstripeSocialFeed\Provider\FacebookProvider") . "' WHERE ClassName = 'SocialFeedProviderFacebook'");
-			DB::query("UPDATE SocialFeedProvider SET ClassName = '" . Convert::raw2sql("SilverstripeSocialFeed\Provider\InstagramProvider") . "' WHERE ClassName = 'SocialFeedProviderInstagram'");
-		}
 	}
 
 	/**

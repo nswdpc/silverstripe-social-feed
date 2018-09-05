@@ -7,7 +7,6 @@ SilverstripeSocialFeed\Jobs:
 # cache lifetime for a feed
 SilverstripeSocialFeed\Provider:
   default_cache_lifetime: 1800
-  migrate_classnames: false
 # cache backend
 SilverStripe\Core\Injector\Injector:
   Psr\SimpleCache\CacheInterface.socialfeedcache:
