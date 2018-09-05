@@ -6,6 +6,7 @@ use Silverstripe\Forms\RequiredFields;
 use SilverStripe\ORM\FieldType\DBField;
 use League\OAuth2\Client\Provider\Facebook;
 use Exception;
+use DateTime;
 
 class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 {
@@ -45,24 +46,12 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 		$fields = parent::getCMSFields();
 		$fields->addFieldsToTab('Root.Main', new LiteralField('sf_html_1', '<h4>To get the necessary Facebook API credentials you\'ll need to create a <a href="https://developers.facebook.com/apps" target="_blank">Facebook App.</a></h4><p>&nbsp;</p>'), 'Label');
 		$fields->replaceField('FacebookType', DropdownField::create('FacebookType', 'Facebook Type', $this->config()->facebook_types));
-		$fields->removeByName('AccessToken');
 		return $fields;
 	}
 
 	public function getCMSValidator()
 	{
 		return new RequiredFields(array('FacebookPageID', 'FacebookAppID', 'FacebookAppSecret'));
-	}
-
-	public function onBeforeWrite()
-	{
-		if ($this->FacebookAppID && $this->FacebookAppSecret) {
-			$this->AccessToken = $this->FacebookAppID . '|' . $this->FacebookAppSecret;
-		} else if ($this->AccessToken) {
-			$this->AccessToken = '';
-		}
-
-		parent::onBeforeWrite();
 	}
 
 	/**
@@ -75,14 +64,19 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 		return $this->type;
 	}
 
+	public function getPostType($post) {
+		return isset($post['type']) ? $post['type'] : '';
+	}
+
 	public function getFeedUncached()
 	{
-		$provider = new Facebook([
+		$options = [
 			'clientId' => $this->FacebookAppID,
 			'clientSecret' => $this->FacebookAppSecret,
 			// https://github.com/thephpleague/oauth2-facebook#graph-api-version
-			'graphApiVersion' => 'v2.6'
-		]);
+			'graphApiVersion' => 'v3.1'
+		];
+		$provider = new Facebook($options);
 
 		// For an App Access Token we can just use our App ID and App Secret pipped together
 		// https://developers.facebook.com/docs/facebook-login/access-tokens#apptokens
@@ -93,8 +87,9 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 			// Get Facebook timestamps in Unix timestamp format
 			'date_format'  => 'U',
 			// Explicitly supply all known 'fields' as the API was returning a minimal fieldset by default.
-			'fields'	   => 'from,message,message_tags,story,story_tags,full_picture,picture,source,link,object_id,name,caption,description,icon,privacy,type,status_type,created_time,updated_time,shares,is_hidden,is_expired,likes,comments',
+			'fields'	   => 'from,message,message_tags,story,story_tags,full_picture,picture,attachments,source,link,object_id,name,caption,description,icon,privacy,type,status_type,created_time,updated_time,shares,is_hidden,is_expired,likes,comments',
 			'access_token' => $accessToken,
+			'appsecret_proof' => hash_hmac('sha256', $accessToken, $this->FacebookAppSecret),
 		);
 		$queryParameters = http_build_query($queryParameters);
 
@@ -126,14 +121,19 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	}
 
 	/**
-	 * Get the creation time from a post
+	 * Get the creation time from a post.
+	 * created_time is a UNIX timestamp
 	 *
 	 * @param $post
 	 * @return mixed
 	 */
 	public function getPostCreated($post)
 	{
-		return isset($post['created_time']) ? $post['created_time'] : '';
+		$created_time = isset($post['created_time']) ? $post['created_time'] : '';
+		if($created_time) {
+			$created_time = gmdate(DateTime::ISO8601, $created_time);
+		}
+		return $created_time;
 	}
 
 	/**
@@ -144,10 +144,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getPostUrl($post)
 	{
-		if (isset($post['actions'][0]['name']) && $post['actions'][0]['name'] === 'Share') {
-			return $post['actions'][0]['link'];
-		} else if (isset($post['link']) && $post['link']) {
-			// For $post['type'] === 'link' && $post['status_type'] === 'shared_story'
+		if (!empty($post['link'])) {
 			return $post['link'];
 		}
 		return null;
@@ -172,7 +169,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImage($post)
 	{
-		return (isset($post['full_picture'])) ? $post['full_picture'] : '';
+		return isset($post['full_picture']) ? $post['full_picture'] : '';
 	}
 
 	/**
@@ -197,6 +194,6 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 	 */
 	public function getImageThumb($post)
 	{
-		return (isset($post['picture'])) ? $post['picture'] : '';
+		return isset($post['picture']) ? $post['picture'] : '';
 	}
 }
