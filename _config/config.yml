@@ -2,7 +2,7 @@
 Name: socialfeed
 ---
 # job frequency feed
-SilverstripeSocialFeed\Jobs:
+SilverstripeSocialFeed\Jobs\SocialFeedCacheQueuedJob:
   time_offset: 900
 # cache lifetime for a feed
 SilverstripeSocialFeed\Provider:

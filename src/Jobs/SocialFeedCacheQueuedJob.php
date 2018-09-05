@@ -5,25 +5,29 @@ use Symbiote\QueuedJobs\Services\AbstractQueuedJob;
 use Symbiote\QueuedJobs\Services\QueuedJobService;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
+use DateTime;
 
-class SocialFeedCacheQueueJob extends AbstractQueuedJob {
+class SocialFeedCacheQueuedJob extends AbstractQueuedJob {
 
 	use Configurable;
 
 	private static $time_offset = 900;
 
 	/**
-	 * Setup job that updates the feed cache 5 minutes before it expires so
-	 * the end-user doesn't experience page-load time slowdown.
+	 * Create a job based on the configured time_offset
 	 */
 	public function createJob(SocialFeedProvider $provider) {
-		$time_offset = $this->config->get(__CLASS__, 'time_offset');
+		$time_offset = Config::inst()->get(SocialFeedCacheQueuedJob::class, 'time_offset');
 		if($time_offset <= 0) {
 			$time_offset = 900;
 		}
 		$run_date = new DateTime();
-		$run_date->modify("+" . $time_offset + ' seconds');
-		singleton( QueuedJobService::class )->queueJob(new SocialFeedCacheQueueJob($provider), $run_date->format('Y-m-d H:i:s'));
+		$run_date->modify("+" . $time_offset . ' seconds');
+		singleton( QueuedJobService::class )
+			->queueJob(
+				new SocialFeedCacheQueuedJob($provider),
+				$run_date->format('Y-m-d H:i:s')
+			);
 	}
 
 	public function __construct($provider = null) {
@@ -40,11 +44,10 @@ class SocialFeedCacheQueueJob extends AbstractQueuedJob {
 		$provider = $this->getObject();
 		return _t(
 			'SocialFeed.SCHEDULEJOBTITLE',
-			'Social Feed - Update cache for "{label}" ({class})',
-			'',
-			array(
-				'class' => $provider->sanitiseClassName(),
-				'label' => $provider->Label
+			sprintf(
+				'Social Feed - Update cache for #%d "%s"',
+				$provider->ID,
+				$provider->Label
 			)
 		);
 	}
