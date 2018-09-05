@@ -13,4 +13,5 @@ interface ProviderInterface
 	public function getImage($post);
 	public function getImageLowRes($post);
 	public function getImageThumb($post);
+	public function getPostType($post);
 }

@@ -155,4 +155,8 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 			return $image . ":thumb";
 		}
 	}
+
+	public function getPostType($post) {
+		return null;
+	}
 }

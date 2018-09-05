@@ -190,4 +190,8 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 	{
 		return isset($post['images']['thumb']['url']) ? $post['images']['thumb']['url'] : '';
 	}
+
+	public function getPostType($post) {
+		return null;
+	}
 }
