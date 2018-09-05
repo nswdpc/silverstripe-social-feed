@@ -5,7 +5,7 @@ Name: socialfeed
 SilverstripeSocialFeed\Jobs\SocialFeedCacheQueuedJob:
   time_offset: 900
 # cache lifetime for a feed
-SilverstripeSocialFeed\Provider:
+SilverstripeSocialFeed\Provider\SocialFeedProvider:
   default_cache_lifetime: 1800
 # cache backend
 SilverStripe\Core\Injector\Injector:
