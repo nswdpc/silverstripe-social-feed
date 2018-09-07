@@ -8,15 +8,6 @@ use Silverstripe\View\ArrayData;
 
 class SocialFeedControllerExtension extends Extension
 {
-	public function onBeforeInit()
-	{
-		// Allow easy clearing of the cache in dev mode
-		if (Director::isDev() && isset($_GET['socialfeedclearcache']) && $_GET['socialfeedclearcache'] == 1) {
-			foreach (SocialFeedProvider::get() as $prov) {
-				$prov->clearFeedCache();
-			}
-		}
-	}
 
 	public function SocialFeed() {
 		$providers = SocialFeedProvider::get()->filter('Enabled', 1);
