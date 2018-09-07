@@ -296,7 +296,7 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	public function clearFeedCache() {
 		$cache = $this->getCacheFactory();
 		$key = $this->getFeedCacheKey();
-		return $cache->remove($key);
+		return $cache->delete($key);
 	}
 
 	/**
