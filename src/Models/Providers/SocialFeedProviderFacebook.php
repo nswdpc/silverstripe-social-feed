@@ -3,6 +3,7 @@ namespace SilverstripeSocialFeed\Provider;
 use Silverstripe\Forms\LiteralField;
 use SilverStripe\Forms\CheckboxField;
 use Silverstripe\Forms\DropdownField;
+use Silverstripe\Forms\TextareaField;
 use Silverstripe\Forms\RequiredFields;
 use SilverStripe\ORM\FieldType\DBField;
 use League\OAuth2\Client\Provider\Facebook;
@@ -20,15 +21,17 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
     private static $table_name = 'SocialFeedProviderFacebook';
 
     private static $db = [
+        'FacebookType' => 'Int',
         'FacebookPageID' => 'Varchar(100)',
         'FacebookAppID' => 'Varchar(400)',
         'FacebookAppSecret' => 'Varchar(400)',
         // initial user access token
         'FacebookUserAccessToken' => 'Text',
-        // page access token details
         'FacebookPageAccessToken' => 'Text',
-        'FacebookPageAccessTokenCreated' => 'Varchar(255)',
-        'FacebookType' => 'Int',
+
+        'FacebookUserAccessTokenExpires' => 'DBDatetime',
+        'FacebookPageAccessTokenCreated' => 'DBDatetime',
+        'FacebookPageAccessTokenExpires' => 'DBDatetime',
     ];
 
     private static $singular_name = 'Facebook Provider';
@@ -40,40 +43,127 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 
     const POSTS_AND_COMMENTS = 0;
     const POSTS_ONLY = 1;
+
     private static $facebook_types = [
         self::POSTS_AND_COMMENTS => 'Page Posts and Comments',
         self::POSTS_ONLY          => 'Page Posts Only'
     ];
 
-    private $type = 'facebook';
-
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
         $fields->addFieldToTab('Root.Main',
-            LiteralField::create('HelpInformation', '<p class="message">To get the necessary Facebook API credentials'
-                 . ' you\'ll need to create a <a href="https://developers.facebook.com/apps" target="_blank">Facebook App.</a></p>'),
-                'Label'
+            LiteralField::create(
+                'FacebookHelpInformation',
+                '<div class="message">'
+                . '<h4>'. _t('SocialFeed.FacebookSetup', 'Facebook feed set-up instructions') . '</h4>'
+                . '<p>' . _t('SocialFeed.FacebookSetupSubtitle', 'To access a page feed, you must have a page access token linked to target page') . '</p>'
+                . '<ol>'
+                . '<li>'. _t('SocialFeed.FacebookCopyPageID', 'Copy the target Facebook Page ID or Page Vanity Name to the \'Facebook Page ID\' field') . '</li>'
+                . '<li>'. _t('SocialFeed.FacebookCreateApp', 'Create a <a href="https://developers.facebook.com/apps" target="_blank">Facebook App</a>') . '</li>'
+                . '<li>'. _t('SocialFeed.FacebookCompleteAppFields', 'Complete all relevant Facebook App fields and get the AppID and App Secret, copy them to the relevant fields here.</a>') . '</li>'
+                . '<li>'. _t('SocialFeed.FacebookGetUserToken', 'Get an admin for the relevant Facebook page to get a short lived user token from <a href="https://developers.facebook.com/tools/explorer/">the Graph API Explorer page</a>. Ensure that the correct application name is selected.') . '</li>'
+                . '<li>'. _t('SocialFeed.FacebookEnterUserToken', 'Add the user token to the \'Facebook User Access Token\' field here. Once the form is saved, a long-lived user access token will be used to get a page access token') . "</li>"
+                . '</ol>'
+                . '</div>'
+            ),
+            'Label'
         );
-        $fields->replaceField('FacebookType', DropdownField::create('FacebookType', 'Facebook Type', $this->config()->facebook_types));
+        $fields->replaceField('FacebookType',
+                    DropdownField::create('FacebookType', 'Facebook Type', $this->config()->facebook_types)
+                        ->setDescription(
+                            _t('SocialFeed.FacebookFeedType', 'Which type of feed would you like to retrieve?')
+                        )
+        );
 
         $fields->dataFieldByName('FacebookPageID')
-                ->setDescription("This value can either be the page vanity name or the actual page id");
+                ->setDescription(
+                    _t('SocialFeed.FacebookPageID', 'This value can either be the page vanity name or the actual page id')
+                );
+
+        $fields->dataFieldByName('FacebookAppID')
+                        ->setDescription(
+                            _t('SocialFeed.FacebookAppID', "This value is provided in the App screen on the Facebook Developers site")
+                        );
+
+        $fields->dataFieldByName('FacebookAppSecret')
+                        ->setDescription(
+                            _t('SocialFeed.FacebookAppSecret', "This value is provided in the App screen on the Facebook Developers site")
+                        );
 
         $fields->dataFieldByName('FacebookPageAccessToken')
-                        ->setDescription("You can verify this value at the access token debugger: https://developers.facebook.com/tools/debug/accesstoken/");
+                        ->setDescription(
+                            _t('SocialFeed.FacebookPageTokenVerification',
+                                "You can verify this value at the access token debugger: https://developers.facebook.com/tools/debug/accesstoken/")
+                            );
 
         $fields->dataFieldByName('FacebookUserAccessToken')
-                ->setDescription('A short lived user access token, created by an admin for the page in question.')
-                ->setRightTitle('See documentation for details on how to create this.');
+                ->setDescription(
+                    _t('SocialFeed.FacebookUserTokenHelp',
+                    'A short lived user access token, created by an admin for the page in question. See documentation for details on how to create this.')
+                    );
+
+        if($this->FacebookPageAccessToken) {
+            if($this->FacebookUserAccessTokenExpires) {
+                $fields->dataFieldByName('FacebookUserAccessTokenExpires')
+                    ->setTitle(_t('SocialFeed.FacebookUserTokenExpiry', 'User Access Token Expiry') )
+                    ->setDescription('UTC');
+            } else {
+                $fields->dataFieldByName('FacebookUserAccessTokenExpires')
+                    ->setTitle(_t('SocialFeed.FacebookUserTokenExpiry', 'User Access Token Expiry') )
+                    ->setDescription( _t('SocialFeed.NotSet', 'Not Set') );
+            }
+            $fields->makeFieldReadonly( $fields->dataFieldByName('FacebookUserAccessTokenExpires'));
+        } else {
+            $fields->removeByName('FacebookUserAccessTokenExpires');
+        }
+        if($this->FacebookPageAccessToken) {
+            if($this->FacebookPageAccessTokenExpires) {
+                $fields->dataFieldByName('FacebookPageAccessTokenExpires')
+                    ->setTitle(_t('SocialFeed.FacebookPageTokenExpiry', 'Page Access Token Expiry') )
+                    ->setDescription('UTC');
+            } else {
+                $fields->dataFieldByName('FacebookPageAccessTokenExpires')
+                    ->setTitle(_t('SocialFeed.FacebookPageTokenExpiry', 'Page Access Token Expiry') )
+                    ->setDescription( _t('SocialFeed.NeverExpires', 'Never expires') );
+            }
+            $fields->makeFieldReadonly( $fields->dataFieldByName('FacebookPageAccessTokenExpires'));
+
+            if($this->FacebookPageAccessTokenCreated) {
+                $fields->dataFieldByName('FacebookPageAccessTokenCreated')
+                    ->setTitle(_t('SocialFeed.FacebookPageTokenCreation', 'Page Access Token Creation') )
+                    ->setDescription('UTC');
+            } else {
+                $fields->dataFieldByName('FacebookPageAccessTokenCreated')
+                    ->setTitle(_t('SocialFeed.FacebookPageTokenCreation', 'Page Access Token Creation') )
+                    ->setDescription( _t('SocialFeed.NeverExpires', 'Never expires') );
+            }
+            $fields->makeFieldReadonly( $fields->dataFieldByName('FacebookPageAccessTokenCreated'));
+        } else {
+            $fields->removeByName('FacebookPageAccessTokenExpires');
+            $fields->removeByName('FacebookPageAccessTokenCreated');
+        }
 
         // allow to force recreate the page access token
         $fields->addFieldToTab('Root.Main',
             CheckboxField::create(
                 'CreatePageAccessToken',
-                'Create a new page access token'
-            )
+                _t('SocialFeed.FacebookCreateNewPageToken', 'Create a new page access token')
+            ),
+            'FacebookPageAccessToken'
         );
+
+        if($this->FacebookPageAccessToken && $this->FacebookUserAccessToken) {
+            $response = $this->debugToken();
+            $fields->addFieldToTab('Root.Main',
+                TextareaField::create(
+                    'PageAccessTokenDebug',
+                    _t('SocialFeed.FacebookPageTokenDebug', 'Page Access Token Debug'),
+                    $response
+                )
+            );
+            $fields->makeFieldReadonly( $fields->dataFieldByName('PageAccessTokenDebug'));
+        }
 
         return $fields;
     }
@@ -111,7 +201,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
             $this->FacebookPageAccessTokenCreated = $dt->format("Y-m-d H:i:s");
             return true;
         }
-        return false;
+        throw new Exception("Facebook: failed to get a page access token");
     }
 
     private function GetAppSecretProof($token) {
@@ -129,11 +219,12 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
                         . "?fields=access_token"
                         . "&access_token={$user_token}"
                         . "&appsecret_proof={$appsecret_proof}";
+        $error = "";
         try {
             $client = new GuzzleHttpClient();
             $options = [];
             $response = $client->request("GET", $url, $options);
-			$body = $response->getBody()->getContents();
+            $body = $response->getBody()->getContents();
             $encoded = json_decode($body, true);
             if(!empty($encoded['access_token'])) {
                 /**
@@ -142,10 +233,13 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
                  * [id] => page_id
                  */
                 $page_access_token = $encoded['access_token'];
+                return $page_access_token;
             }
+            $error = "Facebook: no access_token in page access token request response";
         } catch (Exception $e) {
+            $error = $e->getMessage();
         }
-        return $page_access_token;
+        throw new Exception($error);
     }
 
     /**
@@ -159,12 +253,13 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
                         . "&client_secret={$this->FacebookAppSecret}"
                         . "&grant_type=fb_exchange_token"
                         . "&fb_exchange_token={$this->FacebookUserAccessToken}";
+        $error = "";
         try {
             $client = new GuzzleHttpClient();
             $options = [];
             $response = $client->request("GET", $url, $options);
-			$body = $response->getBody()->getContents();
-			$encoded = json_decode($body, true);
+            $body = $response->getBody()->getContents();
+            $encoded = json_decode($body, true);
             if(!empty($encoded['access_token'])) {
                 /**
                  * Sample response
@@ -173,11 +268,99 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
                  * [expires_in] => 5184000 // 60 days
                  */
                 $user_token_longlived = $encoded['access_token'];
+                if(!empty($encoded['expires_in']) && is_numeric($encoded['expires_in'])) {
+                    try {
+                        $date = gmdate("Y-m-d H:i:s", $encoded['expires_in']);
+                        $this->FacebookUserAccessTokenExpires = $date;
+                    } catch (Exception $e) {}
+                }
+                return $user_token_longlived;
+            }
+            $error = "Facebook: no access_token in exchange token request response";
+        } catch (Exception $e) {
+            $error = $e->getMessage();
+        }
+        throw new Exception($error);
+    }
+
+
+
+    /**
+     * Debug the page access token to get expiry date and such
+     */
+    private function debugToken() {
+        if(!$this->FacebookPageAccessToken || !$this->FacebookUserAccessToken) {
+            return false;
+        }
+        $body = "";
+        try {
+            $appsecret_proof = $this->GetAppSecretProof($this->FacebookUserAccessToken);
+            $url = "https://graph.facebook.com"
+                    . "/debug_token"
+                    . "?input_token={$this->FacebookPageAccessToken}"
+                    . "&appsecret_proof={$appsecret_proof}"
+                    . "&access_token={$this->FacebookUserAccessToken}";
+            $error = "";
+            $client = new GuzzleHttpClient();
+            $options = [];
+            $response = $client->request("GET", $url, $options);
+            $body = $response->getBody()->getContents();
+            $encoded = json_decode($body, true);
+
+            $this->FacebookPageAccessTokenExpires = null;
+            $this->FacebookPageAccessTokenCreated = null;
+
+
+            $data = "";
+            if(!empty($encoded['data'])) {
+                $data = json_encode($encoded['data']);
+                if(isset($encoded['data']['expires_at'])) {
+                    if($encoded['data']['expires_at'] == 0) {
+                        $this->FacebookPageAccessTokenExpires = NULL;
+                    } else {
+                        try {
+                            $date = gmdate("Y-m-d H:i:s", $encoded['data']['expires_at']);
+                            $this->FacebookPageAccessTokenExpires = $date;
+                        } catch (Exception $e) {}
+                    }
+                }
+
+                if(isset($encoded['data']['issued_at'])) {
+                    try {
+                        $date = gmdate("Y-m-d H:i:s", $encoded['data']['issued_at']);
+                        $this->FacebookPageAccessTokenCreated = $date;
+                    } catch (Exception $e) {}
+                }
+            }
+
+            $this->UnsetWriteModifiers();
+            $this->write();
+
+            /*
+            Example:
+            {
+                "data": {
+                    "app_id": 000000000000000,
+                    "application": "Social Cafe",
+                    "expires_at": 1352419328,
+                    "is_valid": true,
+                    "issued_at": 1347235328,
+                    "scopes": [
+                        "email",
+                        "user_location"
+                    ],
+                    "user_id": 1207059
+                }
+            }
+            */
+
+            if(!$data) {
+                $data = "Facebook: no data in debug token response";
             }
         } catch (Exception $e) {
-			print $e->getMessage();
+            $data = $e->getMessage();
         }
-        return $user_token_longlived;
+        return $data;
     }
 
     /**
@@ -187,7 +370,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
      */
     public function getType()
     {
-        return $this->type;
+        return parent::PROVIDER_FACEBOOK;
     }
 
     public function getFeedUncached()
@@ -197,10 +380,10 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
             if(empty($this->FacebookPageAccessToken)) {
                 // could not get a facebook page access token
                 // even after trying harder
-                return false;
+                throw new Exception("Facebook: could not create/retrieve a page access token");
             } else {
-                // write the value
-                $this->CreatePageAccessToken = 0;// avoid circular writes
+                // write the value found
+                $this->UnsetWriteModifiers();
                 $this->write();
             }
         }
@@ -244,6 +427,11 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
         $result = $provider->getResponse($request);
 
         return $result['data'];
+    }
+
+    protected function UnsetWriteModifiers() {
+        parent::UnsetWriteModifiers();
+        $this->CreatePageAccessToken = 0;
     }
 
     public function getPostType($post) {
