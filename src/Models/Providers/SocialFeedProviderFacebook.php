@@ -180,8 +180,10 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
     {
         parent::onBeforeWrite();
         $this->AccessToken = "";// ensure this deprecated value is empty
-        if($this->CreatePageAccessToken == 1 || empty($this->FacebookPageAccessToken)) {
-            $this->GetPageAccessToken();
+        if($this->FacebookAppID && $this->FacebookAppSecret && $this->FacebookUserAccessToken) {
+            if($this->CreatePageAccessToken == 1 || empty($this->FacebookPageAccessToken)) {
+                $this->GetPageAccessToken();
+            }
         }
     }
 
