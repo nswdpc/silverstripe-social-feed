@@ -27,13 +27,21 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
     private static $singular_name = 'Twitter Provider';
     private static $plural_name = 'Twitter Providers';
 
-    private $type = 'twitter';
-
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
-        $fields->addFieldsToTab('Root.Main', new LiteralField('sf_html_1', '<h4>To get the necessary Twitter API credentials you\'ll need to create a <a href="https://apps.twitter.com" target="_blank">Twitter App.</a></h4>'), 'Label');
-        $fields->addFieldsToTab('Root.Main', new LiteralField('sf_html_2', '<p>You can manually grant permissions to the Twitter App, this will give you an Access Token and Access Token Secret.</h5><p>&nbsp;</p>'), 'Label');
+        $fields->addFieldToTab(
+            'Root.Main',
+            LiteralField::create(
+                    'TwitterAppInstructions',
+                    '<p class="message">' . _t('SocialFeed.TwitterInstructions', 'To get the necessary Twitter API credentials you\'ll need'
+                    . ' to create a <a href="https://apps.twitter.com" target="_blank">'
+                    . 'Twitter App.</a>'
+                    . '<br>You can manually grant permissions to the Twitter App, this will'
+                    . ' give you an Access Token and Access Token Secret.') . '</p>'
+            ),
+            'Label'
+        );
         return $fields;
     }
 
@@ -49,7 +57,7 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
      */
     public function getType()
     {
-        return $this->type;
+        return parent::PROVIDER_TWITTER;
     }
 
     public function getFeedUncached()
@@ -57,13 +65,12 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
         // NOTE: Twitter doesn't implement OAuth 2 so we can't use https://github.com/thephpleague/oauth2-client
         $connection = new TwitterOAuth($this->ConsumerKey, $this->ConsumerSecret, $this->AccessToken, $this->AccessTokenSecret);
         $parameters = ['count' => 25, 'exclude_replies' => true];
-        if($this->ScreenName)
-        {
+        if($this->ScreenName) {
             $parameters['screen_name'] = $this->ScreenName;
         }
         $result = $connection->get('statuses/user_timeline', $parameters);
         if (isset($result->error)) {
-            user_error($result->error, E_USER_WARNING);
+            throw new Exception($result->error);
         }
         return $result;
     }
