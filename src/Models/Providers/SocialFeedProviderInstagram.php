@@ -1,14 +1,14 @@
 <?php
 namespace SilverstripeSocialFeed\Provider;
 use Silverstripe\Forms\LiteralField;
-use Silverstripe\Forms\DropdownField;
+use SilverStripe\Forms\DropdownField;
 use Silverstripe\Control\Director;
 use Silverstripe\Forms\RequiredFields;
 use SilverStripe\ORM\FieldType\DBField;
-use League\OAuth2\Client\Provider\Instagram;
 use Exception;
+use DateTime;
 
-class InstagramProvider extends SocialFeedProvider implements ProviderInterface
+class InstagramProvider extends FacebookProvider implements ProviderInterface
 {
 
     /**
@@ -23,41 +23,61 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
         'AccessToken' => 'Varchar(400)'
     );
 
+    /**
+     * Has_one relationship
+     * @var array
+     */
+    private static $has_one = [
+        'FacebookProvider' => FacebookProvider::class, // use the credentials of this Facebook app
+    ];
+
     private static $singular_name = 'Instagram Provider';
     private static $plural_name = 'Instagram Providers';
-
-    private $authBaseURL = 'https://api.instagram.com/oauth/authorize/';
 
     public function getCMSFields()
     {
         $fields = parent::getCMSFields();
+
+        // deprecated fields, emptied on write
+        $fields->removeByName('ClientID');
+        $fields->removeByName('ClientSecret');
+        $fields->removeByName('AccessToken');
+
         $fields->addFieldToTab(
             'Root.Main',
             LiteralField::create(
                 'InstgramInstructions',
                 '<p class="message">'
-                . _t('SocialFeed.InstgramInstructions', 'To get the necessary Instagram API credentials'
-                . ' you\'ll need to create an '
-                . '<a href="https://www.instagram.com/developer/clients/manage/" target="_blank">Instagram Client.</a>'
-                . '<br>You\'ll need to add the following redirect URI '
-                . '<code>' . $this->getRedirectUri() . '</code> in the settings for the Instagram App.')
+                . _t('SocialFeed.InstgramInstructions', 'The Instagram API now uses the Facebook Graph API. Select an existing Facebook Provider or create a new set of authentication tokens below.')
                 . '</p>'
             ),
-            'Label'
+            'FacebookHelpInformation'
         );
 
-        if ($this->ClientID && $this->ClientSecret) {
-            $url = $this->authBaseURL . '?client_id=' . $this->ClientID . '&response_type=code&redirect_uri=' . $this->getRedirectUri() . '?provider_id=' . $this->ID;
-            $fields->addFieldToTab(
-                'Root.Main',
-                LiteralField::create(
-                    'InstgramRedirect',
-                    '<p class="message"><a href="'. $url . '"><button type="button">'
-                    . _t('SocialFeed.InstgramRedirect', 'Authorize App to get Access Token')
-                    . '</a></button>'
-                ),
-                'Label'
-            );
+        $fields->addFieldToTab(
+            'Root.Main',
+            DropdownField::create(
+                'FacebookProviderID',
+                'Use this Facebook Provider (or enter values below)',
+                FacebookProvider::get()->filter(['Enabled' => 1, 'ClassName' => FacebookProvider::class ])->map('ID','Label')
+            )->setEmptyString(''),
+            'FacebookHelpInformation'
+        );
+
+        if($this->FacebookProviderID) {
+            $fields->removeByName([
+                'FacebookType',
+                'FacebookPageAccessToken',
+                'FacebookUserAccessToken',
+                'FacebookPageType',
+                'FacebookPageID',
+                'FacebookAppID',
+                'FacebookAppSecret',
+                'FacebookUserAccessTokenExpires',
+                'FacebookPageAccessTokenCreated',
+                'FacebookPageAccessTokenExpires',
+                'CreatePageAccessToken'
+            ]);
         }
 
         return $fields;
@@ -65,38 +85,66 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
 
     public function getCMSValidator()
     {
-        return new RequiredFields(array('ClientID', 'ClientSecret'));
+        return new RequiredFields();
+    }
+
+    private function validateFacebookProvider() {
+        $provider = $this->FacebookProvider();
+        if(!empty($provider->ID) && ($provider instanceof FacebookProvider) && $provider->ClassName == FacebookProvider::class) {
+            return $provider;
+        }
+        return false;
+    }
+
+    public function getFacebookPageAccessToken() {
+        if($provider = $this->validateFacebookProvider()) {
+            return $provider->FacebookPageAccessToken;
+        } else {
+            return $this->getField('FacebookPageAccessToken');
+        }
+    }
+
+    public function getFacebookUserAccessToken() {
+        if($provider = $this->validateFacebookProvider()) {
+            return $provider->FacebookUserAccessToken;
+        } else {
+            return $this->getField('FacebookUserAccessToken');
+        }
+    }
+
+    public function getFacebookAppSecret() {
+        if($provider = $this->validateFacebookProvider()) {
+            return $provider->FacebookAppSecret;
+        } else {
+            return $this->getField('FacebookAppSecret');
+        }
+    }
+
+    public function getFacebookAppID() {
+        if($provider = $this->validateFacebookProvider()) {
+            return $provider->FacebookAppID;
+        } else {
+            return $this->getField('FacebookAppID');
+        }
+    }
+
+    public function getFacebookPageID() {
+        if($provider = $this->validateFacebookProvider()) {
+            return $provider->FacebookPageID;
+        } else {
+            return $this->getField('FacebookPageID');
+        }
     }
 
     /**
-     * Construct redirect URI using current class name - used during OAuth flow.
-     * @return string
+     * Event handler called before writing to the database.
      */
-    private function getRedirectUri()
+    public function onBeforeWrite()
     {
-
-        return Director::absoluteBaseURL() . 'admin/social-feed/' . $this->sanitiseClassName() . '/';
-    }
-
-    /**
-     * Fetch access token using code, used in the second step of OAuth flow.
-     *
-     * @param $accessCode
-     * @return \League\OAuth2\Client\Token\AccessToken
-     */
-    public function fetchAccessToken($accessCode)
-    {
-        $provider = new Instagram([
-            'clientId' => $this->ClientID,
-            'clientSecret' => $this->ClientSecret,
-            'redirectUri' => $this->getRedirectUri() . '?provider_id=' . $this->ID
-        ]);
-
-        //TODO: handle token expiry (as of 2016-08-03, Instagram access tokens don't expire.)
-        //TODO: save returned user data?
-        return $token = $provider->getAccessToken('authorization_code', [
-            'code' => $accessCode
-        ]);
+        parent::onBeforeWrite();
+        $this->ClientID = "";
+        $this->ClientSecret = "";
+        $this->AccessToken = "";
     }
 
     /**
@@ -109,53 +157,32 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
         return parent::PROVIDER_INSTAGRAM;
     }
 
-    /**
-     * Fetch Instagram data for authorized user
-     *
-     * @return mixed
-     */
-    public function getFeedUncached()
-    {
-        $provider = new Instagram([
-            'clientId' => $this->ClientID,
-            'clientSecret' => $this->ClientSecret,
-            'redirectUri' => $this->getRedirectUri() . '?provider_id=' . $this->ID
-        ]);
-
-        $request = $provider->getRequest('GET', 'https://api.instagram.com/v1/users/self/media/recent/?access_token=' . $this->AccessToken);
-        try {
-            $result = $provider->getResponse($request);
-        } catch (Exception $e) {
-            $errorHelpMessage = '';
-            if ($e->getCode() == 400) {
-                // "Missing client_id or access_token URL parameter." or "The access_token provided is invalid."
-                $cmsLink = Director::absoluteBaseURL().'admin/social-feed/SocialFeedProviderInstagram/EditForm/field/SocialFeedProviderInstagram/item/'.$this->ID.'/edit';
-                $errorHelpMessage = ' -- Go here '.$cmsLink.' and click "Authorize App to get Access Token" to restore Instagram feed.';
-            }
-            // Throw warning as we don't want the whole site to go down if Instagram starts failing.
-            // user_error($e->getMessage() . $errorHelpMessage, E_USER_WARNING);
-            $result['data'] = array();
-        }
-        return $result['data'];
+    public function getPostType($post) {
+        return isset($post['type']) ? $post['type'] : '';
     }
 
     /**
      * @return HTMLText
      */
     public function getPostContent($post, $strip_html = true) {
-        $text = isset($post['caption']['text']) ? $post['caption']['text'] : '';
+        $text = isset($post['message']) ? $post['message'] : '';
         return parent::processTextContent($text, $strip_html);
     }
 
     /**
-     * Get the creation time from a post
+     * Get the creation time from a post.
+     * created_time is a UNIX timestamp
      *
      * @param $post
      * @return mixed
      */
     public function getPostCreated($post)
     {
-        return isset($post['created_time']) ? $post['created_time'] : '';
+        $created_time = isset($post['created_time']) ? $post['created_time'] : '';
+        if($created_time) {
+            $created_time = gmdate(DateTime::ISO8601, $created_time);
+        }
+        return $created_time;
     }
 
     /**
@@ -166,18 +193,21 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
      */
     public function getPostUrl($post)
     {
-        return isset($post['link']) ? $post['link'] : '';
+        if (!empty($post['link'])) {
+            return $post['link'];
+        }
+        return null;
     }
 
     /**
-     * Get the user who created the post
+     * Get the user who made the post
      *
      * @param $post
      * @return mixed
      */
     public function getUserName($post)
     {
-        return isset($post['user']['username']) ? $post['user']['username'] : '';
+        return isset($post['from']['name']) ? $post['from']['name'] : '';
     }
 
     /**
@@ -188,29 +218,31 @@ class InstagramProvider extends SocialFeedProvider implements ProviderInterface
      */
     public function getImage($post)
     {
-        return isset($post['images']['standard_resolution']['url']) ? $post['images']['standard_resolution']['url'] : '';
+        return isset($post['full_picture']) ? $post['full_picture'] : '';
     }
 
-
-
     /**
-     * Twitter's low res version of the feed image ~400w
+     * Get the low res image for the post, which is currently just the full_picture as FB only returns either "full_picture" or "picture"
+     *
+     * @param $post
+     * @return mixed
      */
     public function getImageLowRes($post)
     {
-        return isset($post['images']['low_resolution']['url']) ? $post['images']['low_resolution']['url'] : '';
-        return $image;
+        return $this->getImage($post);
     }
 
     /**
-     * Twitter's thumb version of the feed image ~150w
+     * Get the thumb image for the post
+     * The docs say:
+     *         "URL to a resized version of the Photo published in the Post or scraped from a link in the Post.
+     *         If the photo's largest dimension exceeds 130 pixels, it will be resized, with the largest dimension set to 130."
+     *
+     * @param $post
+     * @return mixed
      */
     public function getImageThumb($post)
     {
-        return isset($post['images']['thumb']['url']) ? $post['images']['thumb']['url'] : '';
-    }
-
-    public function getPostType($post) {
-        return null;
+        return isset($post['picture']) ? $post['picture'] : '';
     }
 }
