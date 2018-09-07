@@ -3,7 +3,7 @@ namespace SilverstripeSocialFeed\Provider;
 use SilverstripeSocialFeed\Jobs\SocialFeedCacheQueuedJob;
 use Silverstripe\Control\Director;
 use Silverstripe\Control\Controller;
-use Silverstripe\Forms\LiteralField;
+use Silverstripe\Forms\CheckboxField;
 use Silverstripe\ORM\DataObject;
 use Silverstripe\ORM\ArrayList;
 use Silverstripe\ORM\DB;
@@ -19,6 +19,10 @@ use DateTime;
 class SocialFeedProvider extends DataObject  implements ProviderInterface
 {
 
+	CONST PROVIDER_FACEBOOK = 'facebook';
+	CONST PROVIDER_TWITTER = 'twitter';
+	CONST PROVIDER_INSTAGRAM = 'instagram';
+
 	/**
 	 * Defines the database table name
 	 * @var string
@@ -27,7 +31,8 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 
 	private static $db = array(
 		'Label' => 'Varchar(100)',
-		'Enabled' => 'Boolean'
+		'Enabled' => 'Boolean',
+		'LastFeedError' => 'Text',
 	);
 
 	private static $summary_fields = array(
@@ -67,26 +72,36 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	 * @return FieldList
 	 */
 	public function getCMSFields() {
-		if (Controller::has_curr())
-		{
-			if (isset($_GET['socialfeedclearcache']) && $_GET['socialfeedclearcache'] == 1 && $this->canEdit()) {
-				$this->clearFeedCache();
-				$url =  Controller::curr()->getRequest()->getVar('url');
-				$urlAndParams = explode('?', $url);
-				Controller::curr()->redirect($urlAndParams[0]);
-			}
-
-			$this->beforeUpdateCMSFields(function($fields) {
-				$cache = $this->getFeedCache();
-				if ($cache !== null && $cache !== false) {
-					$url = Controller::curr()->getRequest()->getVar('url');
-					$url .= '?socialfeedclearcache=1';
-					$fields->addFieldToTab('Root.Main', LiteralField::create('cacheclear', '<a href="'.$url.'" class="field ss-ui-button ui-button" style="max-width: 100px;">Clear Cache</a>'));
-				}
-			});
-		}
 		$fields = parent::getCMSFields();
+		$fields->addFieldToTab('Root.Main',
+			CheckboxField::create(
+				'RefreshFeedFromSource',
+				_t('SocialFeed.REFRESH_FEED','Refresh feed from the source')
+			),
+			'Enabled'
+		);
+		// reporting errors
+		$fields->makeFieldReadonly( $fields->dataFieldByName('LastFeedError'));
 		return $fields;
+	}
+
+	/**
+	 * Event handler called before writing to the database.
+	 */
+	public function onBeforeWrite()
+	{
+		parent::onBeforeWrite();
+		$this->MaybeRefreshFeed();
+	}
+
+	private function MaybeRefreshFeed() {
+		if($this->RefreshFeedFromSource == 1) {
+			try {
+				$this->getFeedUncached();
+			} catch (Exception $e) {
+				$this->LastFeedError = $e->getMessage();
+			}
+		}
 	}
 
 	public function getType() {
@@ -120,6 +135,14 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	}
 	public function getImageThumb($post) {
 		throw new Exception("Do not instantiate {$this->ClassName}::getImageThumb");
+	}
+
+	/**
+	 * Different providers can set certain properties to values to process certain tasks on write
+	 * The provider class uses this method to unset/reset these and avoid circular writes, for instance
+	 */
+	protected function UnsetWriteModifiers() {
+		$this->RefreshFeedFromSource = 0;
 	}
 
 
@@ -179,9 +202,16 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	public function getFeed() {
 		$feed = $this->getFeedCache();
 		if (!$feed) {
-			$feed = $this->getFeedUncached();
-			$this->extend('updateFeedUncachedData', $feed);
-			$this->setFeedCache($feed);
+			try {
+				$feed = $this->getFeedUncached();
+				$this->extend('updateFeedUncachedData', $feed);
+				$this->setFeedCache($feed);
+			} catch (Exception $e) {
+				// store an error for helping with issue resolution
+				$this->LastFeedError = $e->getMessage();
+				$this->UnsetWriteModifiers();
+				$this->write();
+			}
 			singleton( SocialFeedCacheQueuedJob::class )->createJob($this);
 		}
 
