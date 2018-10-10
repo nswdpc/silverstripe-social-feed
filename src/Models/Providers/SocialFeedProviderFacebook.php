@@ -190,7 +190,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
     /**
      * Get a page access token, save it and the expiry returned
      */
-    private function GetPageAccessToken() {
+    protected function GetPageAccessToken() {
         $user_token_longlived = $this->RequestExchangeToken();
         if(!$user_token_longlived) {
             // cannot get a page access token without this
@@ -206,7 +206,7 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
         throw new Exception("Facebook: failed to get a page access token");
     }
 
-    private function GetAppSecretProof($token) {
+    protected function GetAppSecretProof($token) {
         return hash_hmac('sha256', $token, $this->FacebookAppSecret);
     }
 

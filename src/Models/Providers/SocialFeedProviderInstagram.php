@@ -1,10 +1,13 @@
 <?php
 namespace SilverstripeSocialFeed\Provider;
 use Silverstripe\Forms\LiteralField;
+use SilverStripe\Forms\TextField;
 use SilverStripe\Forms\DropdownField;
 use Silverstripe\Control\Director;
 use Silverstripe\Forms\RequiredFields;
 use SilverStripe\ORM\FieldType\DBField;
+use League\OAuth2\Client\Provider\Facebook;
+use GuzzleHttp\Client as GuzzleHttpClient;
 use Exception;
 use DateTime;
 
@@ -18,9 +21,8 @@ class InstagramProvider extends FacebookProvider implements ProviderInterface
     private static $table_name = 'SocialFeedProviderInstagram';
 
     private static $db = array(
-        'ClientID' => 'Varchar(400)',
-        'ClientSecret' => 'Varchar(400)',
-        'AccessToken' => 'Varchar(400)'
+        'InstagramBusinessAccountId' => 'Varchar(255)',
+		'InstagramUsername' => 'Varchar(255)',
     );
 
     /**
@@ -38,11 +40,6 @@ class InstagramProvider extends FacebookProvider implements ProviderInterface
     {
         $fields = parent::getCMSFields();
 
-        // deprecated fields, emptied on write
-        $fields->removeByName('ClientID');
-        $fields->removeByName('ClientSecret');
-        $fields->removeByName('AccessToken');
-
         $fields->addFieldToTab(
             'Root.Main',
             LiteralField::create(
@@ -53,6 +50,24 @@ class InstagramProvider extends FacebookProvider implements ProviderInterface
             ),
             'FacebookHelpInformation'
         );
+
+		$fields->addFieldToTab(
+			'Root.Main',
+			TextField::create(
+				'InstagramBusinessAccountId',
+				'Instagram Business Account Id'
+			)->setDescription('Leave empty to automatically retrieve this using the saved Facebook Page Access Token'),
+			'Label'
+		);
+
+		$fields->addFieldToTab(
+			'Root.Main',
+			TextField::create(
+				'InstagramUsername',
+				'Instagram Username'
+			)->setDescription('Used for business disovery'),
+			'Label'
+		);
 
         $fields->addFieldToTab(
             'Root.Main',
@@ -142,6 +157,8 @@ class InstagramProvider extends FacebookProvider implements ProviderInterface
     public function onBeforeWrite()
     {
         parent::onBeforeWrite();
+
+		//deprecated fields
         $this->ClientID = "";
         $this->ClientSecret = "";
         $this->AccessToken = "";
@@ -155,6 +172,94 @@ class InstagramProvider extends FacebookProvider implements ProviderInterface
     public function getType()
     {
         return parent::PROVIDER_INSTAGRAM;
+    }
+
+	/**
+	 * Given the configured page access token, try to get the instagram_business_account id
+	 * See: https://developers.facebook.com/docs/instagram-api/reference/page/ and note the permissions required
+	 */
+	protected function RequestInstagramBusinessAccountId() {
+		if(!$this->FacebookPageAccessToken) {
+			return "";
+		}
+		if(!$this->FacebookPageID) {
+			return "";
+		}
+		$appsecret_proof = $this->GetAppSecretProof($this->FacebookPageAccessToken);
+		$url = "https://graph.facebook.com"
+						. "/{$this->FacebookPageID}"
+						. "?fields=instagram_business_account"
+						. "&access_token={$this->FacebookPageAccessToken}"
+						. "&appsecret_proof={$appsecret_proof}";
+		$error = "";
+		try {
+			$client = new GuzzleHttpClient();
+			$options = [];
+			$response = $client->request("GET", $url, $options);
+			$body = $response->getBody()->getContents();
+			if(!empty($encoded['instagram_business_account']['id'])) {
+				return $encoded['instagram_business_account']['id'];
+			}
+			$error = "Instagram: no instagram_business_account.id in request response";
+		} catch (Exception $e) {
+			$error = $e->getMessage();
+		}
+		throw new Exception($error);
+	}
+
+	public function getFeedUncached()
+    {
+		if(empty($this->InstagramUsername)) {
+			throw new Exception("No Instagram Username provided");
+		}
+        if(empty($this->FacebookPageAccessToken)) {
+            $this->GetPageAccessToken();
+            if(empty($this->FacebookPageAccessToken)) {
+                // could not get a facebook page access token
+                // even after trying harder
+                throw new Exception("Facebook: could not create/retrieve a page access token");
+            } else {
+                // write the value found
+                $this->UnsetWriteModifiers();
+                $this->write();
+            }
+        }
+
+		if(empty($this->InstagramBusinessAccountId)) {
+			if($instagram_business_account_id = $this->RequestInstagramBusinessAccountId()) {
+				$this->InstagramBusinessAccountId = $instagram_business_account_id;
+				$this->UnsetWriteModifiers();
+				$this->write();
+			} else {
+				throw new Exception("Failed to retrieve the instagram_business_account.id");
+			}
+		}
+        $options = [
+            'clientId' => $this->FacebookAppID,
+            'clientSecret' => $this->FacebookAppSecret,
+            // https://github.com/thephpleague/oauth2-facebook#graph-api-version
+            'graphApiVersion' => 'v3.1'
+        ];
+        $provider = new Facebook($options);
+
+        // Setup query params for FB query
+        $queryParameters = array(
+            // Get Facebook timestamps in Unix timestamp format
+            'date_format'  => 'U',
+            // Explicitly supply all known 'fields' as the API was returning a minimal fieldset by default.
+            'fields'       => "business_discovery.username({$this->InstagramUsername}){followers_count,media_count,media}",
+            'access_token' => $this->FacebookPageAccessToken,
+            'appsecret_proof' => $this->GetAppSecretProof($this->FacebookPageAccessToken)
+        );
+
+        $queryParameters = http_build_query($queryParameters);
+
+		$request_url = 'https://graph.facebook.com/' . $this->InstagramBusinessAccountId . '/?'.$queryParameters;
+
+        $request = $provider->getRequest('GET', $request_url);
+        $result = $provider->getResponse($request);
+
+        return $result['data'];
     }
 
     public function getPostType($post) {
