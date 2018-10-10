@@ -13,7 +13,11 @@ class SocialFeedCacheTask extends BuildTask {
 	 * Gets the feed for each provider and updates the cache with it.
 	 */
 	public function run($request) {
+		$id = $request->getVar('id');
 		if( $providers = SocialFeedProvider::get()->filter('Enabled', 1) ) {
+			if($id) {
+				$providers = $providers->filter("ID", $id);
+			}
 			foreach ($providers as $provider) {
 				try {
 					$this->log("Getting feed for #{$provider->ID} ({$provider->sanitiseClassName()})");
