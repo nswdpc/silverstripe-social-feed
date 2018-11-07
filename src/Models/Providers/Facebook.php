@@ -14,6 +14,8 @@ use DateTime;
 class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 {
 
+    protected $enabled_api_client = true;
+
     /**
      * Defines the database table name
      * @var string

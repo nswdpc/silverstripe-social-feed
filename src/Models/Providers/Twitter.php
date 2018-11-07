@@ -10,6 +10,8 @@ use Exception;
 class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 {
 
+    protected $enabled_api_client = true;
+
     /**
      * Defines the database table name
      * @var string

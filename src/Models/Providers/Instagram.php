@@ -11,8 +11,14 @@ use GuzzleHttp\Client as GuzzleHttpClient;
 use Exception;
 use DateTime;
 
+/**
+ * InstagramProvider using the Facebook Graph API. Note that this is not complete due to API changes.
+ * Use the InstagramBasicProvider to aggregate your own feed
+ */
 class InstagramProvider extends FacebookProvider implements ProviderInterface
 {
+
+    protected $enabled_api_client = false;
 
     /**
      * Defines the database table name

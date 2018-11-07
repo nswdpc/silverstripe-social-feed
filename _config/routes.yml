@@ -1,0 +1,8 @@
+---
+Name: socialfeedroutes
+After:
+  - 'framework/routes#coreroutes'
+---
+Silverstripe\Control\Director:
+  rules:
+    'social-feed-authorise': 'SilverstripeSocialFeed\Controllers\AuthorisationController'

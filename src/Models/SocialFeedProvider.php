@@ -4,6 +4,7 @@ use SilverstripeSocialFeed\Jobs\SocialFeedCacheQueuedJob;
 use Silverstripe\Control\Director;
 use Silverstripe\Control\Controller;
 use Silverstripe\Forms\CheckboxField;
+use Silverstripe\Forms\DropdownField;
 use Silverstripe\ORM\DataObject;
 use Silverstripe\ORM\ArrayList;
 use Silverstripe\ORM\DB;
@@ -13,15 +14,20 @@ use SilverStripe\ORM\FieldType\DBField;
 use SilverStripe\ORM\FieldType\DBHTMLText;
 use Psr\SimpleCache\CacheInterface;
 use SilverStripe\Core\Injector\Injector;
+use SilverStripe\Core\ClassInfo;
+use SilverStripe\ORM\ValidationException;
 use Exception;
 use DateTime;
 
 class SocialFeedProvider extends DataObject  implements ProviderInterface
 {
 
-	CONST PROVIDER_FACEBOOK = 'facebook';
-	CONST PROVIDER_TWITTER = 'twitter';
-	CONST PROVIDER_INSTAGRAM = 'instagram';
+	protected $enabled_api_client = true;
+
+	const PROVIDER_FACEBOOK = 'facebook';
+	const PROVIDER_TWITTER = 'twitter';
+	const PROVIDER_INSTAGRAM = 'instagram';
+	const PROVIDER_INSTAGRAM_BASIC = 'instagrambasic';
 
 	/**
 	 * Defines the database table name
@@ -36,7 +42,9 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	);
 
 	private static $summary_fields = array(
+		'ID' => '#',
 		'Label' => 'Label',
+		'Type' => 'Type',
 		'Enabled.Nice' => 'Enabled'
 	);
 
@@ -64,8 +72,44 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	 */
 	private static $default_cache_lifetime = 1800; // 15 minutes (900 seconds)
 
+	/**
+	 * Return the edit link to this item
+	 */
+	public function itemEditLink() {
+		$slug = str_replace("\\", "-", SocialFeedProvider::class);
+		return Director::absoluteURL( Controller::join_links('admin', 'social-feed', $slug, 'EditForm/field', $slug, 'item', $this->ID, 'edit') );
+	}
+
 	public function getTitle() {
 		return $this->Label;
+	}
+
+	/**
+	 * returns whether this api client is shipped enabled
+	 */
+	public function getIsEnabled() {
+		return $this->enabled_api_client;
+	}
+
+	public function getAllowedFeedProviders() {
+		$subclasses = ClassInfo::subclassesFor( self::class );
+		$map = [];
+		foreach($subclasses as $k=>$subclass) {
+			if($subclass == self::class) {
+				unset($subclasses[$k]);
+				continue;
+			}
+
+			$sng = singleton($subclass);
+			if(!$sng->getIsEnabled()) {
+				unset($subclasses[$k]);
+				continue;
+			}
+			$map_key = preg_replace("|^SilverstripeSocialFeed\\\\Provider\\\\|", "", $subclass);
+			$map[ $map_key ] = $sng->singular_name();
+
+		}
+		return $map;
 	}
 
 	/**
@@ -73,15 +117,31 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	 */
 	public function getCMSFields() {
 		$fields = parent::getCMSFields();
-		$fields->addFieldToTab('Root.Main',
-			CheckboxField::create(
-				'RefreshFeedFromSource',
-				_t('SocialFeed.REFRESH_FEED','Refresh feed from the source')
-			),
-			'Enabled'
-		);
-		// reporting errors
-		$fields->makeFieldReadonly( $fields->dataFieldByName('LastFeedError'));
+		if(!$this->exists()) {
+			foreach($fields->dataFields() as $field) {
+				$fields->removeByName([
+					$field->getName()
+				]);
+			}
+			$subclasses = $this->getAllowedFeedProviders();
+			$fields->addFieldToTab('Root.Main',
+				DropdownField::create(
+					'FeedProviderType',
+					_t('SocialFeed.FEED_PROVIDER_TYPE','Choose the feed provider'),
+					$subclasses
+				)->setEmptyString('')
+			);
+		} else {
+			$fields->addFieldToTab('Root.Main',
+				CheckboxField::create(
+					'RefreshFeedFromSource',
+					_t('SocialFeed.REFRESH_FEED','Refresh feed from the source')
+				),
+				'Enabled'
+			);
+			// reporting errors
+			$fields->makeFieldReadonly( $fields->dataFieldByName('LastFeedError'));
+		}
 		return $fields;
 	}
 
@@ -91,7 +151,28 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	public function onBeforeWrite()
 	{
 		parent::onBeforeWrite();
-		$this->MaybeRefreshFeed();
+		if(!$this->exists()) {
+			if($this->FeedProviderType) {
+				// initial write of child record
+				$type = $this->FeedProviderType;
+				if(!$type) {
+					throw new ValidationException("Please select a feed provider");
+				}
+				$class_name = "SilverstripeSocialFeed\\Provider\\{$type}";
+				if(class_exists($class_name)) {
+					$inst = singleton($class_name);
+					$inst->write();
+					if(!$inst->ID) {
+						throw new ValidationException("The record could not be saved at the current time");
+					}
+					$this->ID = $inst->ID;// transfer ID across, this operation then becomes an "edit"
+				} else {
+					throw new ValidationException("Unknown feed provider: {$type}");
+				}
+			}
+		} else {
+			$this->MaybeRefreshFeed();
+		}
 	}
 
 	private function MaybeRefreshFeed() {
@@ -220,7 +301,11 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 			foreach ($feed as $post) {
 				$created = DBDatetime::create();
 				$post_created_date = $this->getPostCreated($post);
-				$dt = new DateTime( $post_created_date );
+				if(!($post_created_date instanceof DateTime)) {
+					$dt = new DateTime( $post_created_date );
+				} else {
+					$dt = $post_created_date;
+				}
 				$created->setValue( $dt->format( DateTime::ISO8601 ) );
 				$data[] = array(
 					'Type' => $this->getType(),
@@ -305,5 +390,9 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 	protected function getCacheFactory() {
 		$cache = Injector::inst()->get(CacheInterface::class . '.socialfeedcache');
 		return $cache;
+	}
+
+	public function finaliseAuthorisation($params) {
+		return false;
 	}
 }

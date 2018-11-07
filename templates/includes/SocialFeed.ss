@@ -13,4 +13,3 @@
 		<% end_loop %>
 	</ol>
 </div>
-

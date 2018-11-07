@@ -19,8 +19,8 @@
 	"require": {
 		"silverstripe/framework": "~4.0",
 		"league/oauth2-facebook": "^1.4",
-		"league/oauth2-instagram": "^0.2.3",
 		"abraham/twitteroauth": "^0.9.2",
+		"pgrimaud/instagram-user-feed": "^4.0",
 		"symbiote/silverstripe-queuedjobs": "~4.0"
 	}
 }

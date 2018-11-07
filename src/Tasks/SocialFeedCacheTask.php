@@ -14,6 +14,7 @@ class SocialFeedCacheTask extends BuildTask {
 	 */
 	public function run($request) {
 		$id = $request->getVar('id');
+		$verbose = $request->getVar('verbose');
 		if( $providers = SocialFeedProvider::get()->filter('Enabled', 1) ) {
 			if($id) {
 				$providers = $providers->filter("ID", $id);
@@ -22,6 +23,10 @@ class SocialFeedCacheTask extends BuildTask {
 				try {
 					$this->log("Getting feed for #{$provider->ID} ({$provider->sanitiseClassName()})");
 					$feed = $provider->getFeedUncached();
+					if($verbose) {
+						print "Feed #{$provider->ID}\n";
+						print_r($feed);
+					}
 					$provider->setFeedCache($feed);
 					$this->log("\tUpdated feed cache for #{$provider->ID} ({$provider->sanitiseClassName()})");
 					if($feed) {
