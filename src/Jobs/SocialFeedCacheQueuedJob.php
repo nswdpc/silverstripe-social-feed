@@ -6,6 +6,7 @@ use Symbiote\QueuedJobs\Services\QueuedJobService;
 use SilverStripe\Core\Config\Config;
 use SilverStripe\Core\Config\Configurable;
 use DateTime;
+use Exception;
 
 class SocialFeedCacheQueuedJob extends AbstractQueuedJob {
 
@@ -13,10 +14,15 @@ class SocialFeedCacheQueuedJob extends AbstractQueuedJob {
 
 	private static $time_offset = 900;
 
+	public function __construct($provider_type = '', $provider_id = null) {
+		$this->provider_type = trim($provider_type);
+		$this->provider_id = $provider_id;
+	}
+
 	/**
 	 * Create a job based on the configured time_offset
 	 */
-	public function createJob(SocialFeedProvider $provider) {
+	public function createJob($provider_type = '', $provider_id = null) {
 		$time_offset = Config::inst()->get(SocialFeedCacheQueuedJob::class, 'time_offset');
 		if($time_offset <= 0) {
 			$time_offset = 900;
@@ -25,29 +31,21 @@ class SocialFeedCacheQueuedJob extends AbstractQueuedJob {
 		$run_date->modify("+" . $time_offset . ' seconds');
 		singleton( QueuedJobService::class )
 			->queueJob(
-				new SocialFeedCacheQueuedJob($provider),
+				new SocialFeedCacheQueuedJob($provider_type, $provider_id),
 				$run_date->format('Y-m-d H:i:s')
 			);
-	}
-
-	public function __construct($provider = null) {
-		if ($provider && $provider instanceof SocialFeedProvider) {
-			$this->setObject($provider);
-			$this->totalSteps = 1;
-		}
 	}
 
 	/**
 	 * Get the name of the job to show in the QueuedJobsAdmin.
 	 */
 	public function getTitle() {
-		$provider = $this->getObject();
 		return _t(
 			'SocialFeed.SCHEDULEJOBTITLE',
 			sprintf(
-				'Social Feed - Update cache for #%d "%s"',
-				$provider->ID,
-				$provider->Label
+				'Social Feed - Update feed cache for provider type=%s id=%s',
+				$this->provider_type,
+				$this->provider_id
 			)
 		);
 	}
@@ -57,13 +55,25 @@ class SocialFeedCacheQueuedJob extends AbstractQueuedJob {
 	 * providers cache.
 	 */
 	public function process() {
-		$provider = $this->getObject();
-		if ($provider && $provider instanceof SocialFeedProvider)
-		{
-			$feed = $provider->getFeedUncached();
-			$provider->setFeedCache($feed);
+		if($this->provider_type || $this->provider_id) {
+			$providers = SocialFeedProvider::get()->filter('Enabled', 1);
+			$provider_type = trim($this->provider_type);
+			if($provider_type) {
+				$classname = "SilverstripeSocialFeed\\Provider\\" . $provider_type;
+				$providers = $providers->filter('ClassName', $classname);
+			}
+			if($this->provider_id) {
+				$providers = $providers->filter('ID', $this->provider_id);
+			}
+			$count = $providers->count();
+			if($count == 0) {
+				throw new Exception("No providers found for type={$provider_type} id={$this->provider_id}");
+			}
+			foreach($providers as $provider) {
+				$feed = $provider->getFeedUncached();
+				$provider->setFeedCache($feed);
+			}
 		}
-		$this->currentStep = 1;
 		$this->isComplete = true;
 	}
 
@@ -71,11 +81,6 @@ class SocialFeedCacheQueuedJob extends AbstractQueuedJob {
 	 * Called when the job is determined to be 'complete'
 	 */
 	public function afterComplete() {
-		$provider = $this->getObject();
-		if ($provider && $provider instanceof SocialFeedProvider)
-		{
-			// Create next job
-			$this->createJob($provider);
-		}
+		$this->createJob($this->provider_type, $this->provider_id);
 	}
 }
