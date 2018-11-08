@@ -260,7 +260,7 @@ https://api.instagram.com/oauth/access_token
         if(!$result || empty($result->medias)) {
             return false;
         }
-        return (array)$result->medias;
+        return $result->medias;
 
         /*
         Instagram\Hydrator\Feed Object
@@ -305,14 +305,14 @@ https://api.instagram.com/oauth/access_token
     }
 
     public function getPostType($post) {
-        return isset($post['typeName']) ? $post['typeName'] : '';
+        return isset($post->typeName) ? $post->typeName : '';
     }
 
     /**
      * @return HTMLText
      */
     public function getPostContent($post, $strip_html = true) {
-        $text = isset($post['caption']) ? $post['caption'] : '';
+        $text = isset($post->caption) ? $post->caption : '';
         return parent::processTextContent($text, $strip_html);
     }
 
@@ -325,7 +325,7 @@ https://api.instagram.com/oauth/access_token
      */
     public function getPostCreated($post)
     {
-        $created_datetime = isset($post['date']) && ($post['date'] instanceof DateTime) ? $post['date'] : '';
+        $created_datetime = isset($post->date) && ($post->date instanceof DateTime) ? $post->date : '';
         return $created_datetime;
     }
 
@@ -337,8 +337,8 @@ https://api.instagram.com/oauth/access_token
      */
     public function getPostUrl($post)
     {
-        if (!empty($post['link'])) {
-            return $post['link'];
+        if (!empty($post->link)) {
+            return $post->link;
         }
         return null;
     }
@@ -362,7 +362,7 @@ https://api.instagram.com/oauth/access_token
      */
     public function getImage($post)
     {
-        return isset($post['displaySrc']) ? $post['displaySrc'] : '';
+        return isset($post->displaySrc) ? $post->displaySrc : '';
     }
 
     /**
@@ -387,7 +387,7 @@ https://api.instagram.com/oauth/access_token
      */
     public function getImageThumb($post)
     {
-        return isset($post['thumbnailSrc']) ? $post['thumbnailSrc'] : '';
+        return isset($post->thumbnailSrc) ? $post->thumbnailSrc : '';
     }
 
 
