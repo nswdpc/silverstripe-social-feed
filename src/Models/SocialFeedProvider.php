@@ -284,11 +284,17 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 				$this->UnsetWriteModifiers();
 				$this->write();
 			}
-			singleton( SocialFeedCacheQueuedJob::class )->createJob($this);
+			singleton( SocialFeedCacheQueuedJob::class )->createJob('', $this->ID);
 		}
 
 		$data = [];
 		if (is_array($feed) && !empty($feed)) {
+
+			// clear last error
+			$this->LastFeedError = '';
+			$this->UnsetWriteModifiers();
+			$this->write();
+
 			foreach ($feed as $post) {
 				$created = DBDatetime::create();
 				$post_created_date = $this->getPostCreated($post);
@@ -350,7 +356,11 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 		$cache = $this->getCacheFactory();
 		$key = $this->getFeedCacheKey();
 		$feed = $cache->get($key);
-		return json_decode($feed, true);
+		return $this->hydrate($feed);
+	}
+
+	protected function hydrate($feed) {
+		throw new Exception($this->class.' missing implementation for '.__FUNCTION__);
 	}
 
 	/**

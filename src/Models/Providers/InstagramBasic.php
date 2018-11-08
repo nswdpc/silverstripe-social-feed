@@ -102,8 +102,6 @@ https://api.instagram.com/oauth/access_token
 			"code" => $code
 		];
 
-		//print "<pre>";print_r($params);exit;
-
 		$options = ['form_params' => $params ];
 		$response = $client->request('POST', $url, $options);
 		$body = $response->getBody()->getContents();
@@ -238,6 +236,7 @@ https://api.instagram.com/oauth/access_token
 
     public function getFeedUncached()
     {
+
         if(empty($this->InstagramUsername)) {
             throw new Exception("No Instagram Username provided");
         }
@@ -250,7 +249,7 @@ https://api.instagram.com/oauth/access_token
             throw new Exception("No Instagram User Id provided");
         }
 
-        $api = new \Instagram\Api();
+        $api = new InstagramBasicAPI();
 
         $api->setAccessToken($this->InstagramAccessToken);
         $api->setUserId($this->InstagramUserId);
@@ -303,6 +302,10 @@ https://api.instagram.com/oauth/access_token
         )
         */
     }
+
+	protected function hydrate($feed) {
+		return json_decode($feed, false);
+	}
 
     public function getPostType($post) {
         return isset($post->typeName) ? $post->typeName : '';
