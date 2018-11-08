@@ -19,10 +19,14 @@ use SilverStripe\ORM\ValidationException;
 use Exception;
 use DateTime;
 
-class SocialFeedProvider extends DataObject  implements ProviderInterface
+class SocialFeedProvider extends DataObject implements ProviderInterface
 {
 
 	protected $enabled_api_client = true;
+
+	private static $description = '';
+	private static $singular_name = '';
+	private static $plural_name = '';
 
 	const PROVIDER_FACEBOOK = 'facebook';
 	const PROVIDER_TWITTER = 'twitter';
@@ -106,7 +110,8 @@ class SocialFeedProvider extends DataObject  implements ProviderInterface
 				continue;
 			}
 			$map_key = preg_replace("|^SilverstripeSocialFeed\\\\Provider\\\\|", "", $subclass);
-			$map[ $map_key ] = $sng->singular_name();
+			$provider_description = $sng->config()->get('description');
+			$map[ $map_key ] = $sng->singular_name() . ($provider_description ? " - {$provider_description}" : "");
 
 		}
 		return $map;
