@@ -67,66 +67,66 @@ class InstagramBasicProvider extends SocialFeedProvider implements ProviderInter
         return parent::PROVIDER_INSTAGRAM_BASIC;
     }
 
-	/*
-	 * This method is called from the controller
-	 	error: access_denied
-		error_reason: user_denied
-		error_description: The user denied your request
+    /*
+     * This method is called from the controller
+         error: access_denied
+        error_reason: user_denied
+        error_description: The user denied your request
 
-		curl -F 'client_id=CLIENT_ID' \
+        curl -F 'client_id=CLIENT_ID' \
 -F 'client_secret=CLIENT_SECRET' \
 -F 'grant_type=authorization_code' \
 -F 'redirect_uri=AUTHORIZATION_REDIRECT_URI' \
 -F 'code=CODE' \
 https://api.instagram.com/oauth/access_token
 
-	 */
-	public function finaliseAuthorisation($params) {
-		$code = isset($params['code']) ? $params['code'] : '';
-		if(!$code) {
-			throw new Exception("No 'code' param provided");
-		}
+     */
+    public function finaliseAuthorisation($params) {
+        $code = isset($params['code']) ? $params['code'] : '';
+        if(!$code) {
+            throw new Exception("No 'code' param provided");
+        }
 
-		if(!$this->ClientID || !$this->ClientSecret) {
-			throw new Exception("Missing configuration for provider #{$this->ID} - clientid and/or secret");
-		}
+        if(!$this->ClientID || !$this->ClientSecret) {
+            throw new Exception("Missing configuration for provider #{$this->ID} - clientid and/or secret");
+        }
 
-		$client = new GuzzleHttpClient();
-		$url = "https://api.instagram.com/oauth/access_token";
+        $client = new GuzzleHttpClient();
+        $url = "https://api.instagram.com/oauth/access_token";
 
-		$params = [
-			"client_id" => $this->ClientID,
-			"client_secret" => $this->ClientSecret,
-			"grant_type" => "authorization_code",
-			"redirect_uri" => $this->getRedirectUrl(), // this is/must be the same as the original request
-			"code" => $code
-		];
+        $params = [
+            "client_id" => $this->ClientID,
+            "client_secret" => $this->ClientSecret,
+            "grant_type" => "authorization_code",
+            "redirect_uri" => $this->getRedirectUrl(), // this is/must be the same as the original request
+            "code" => $code
+        ];
 
-		$options = ['form_params' => $params ];
-		$response = $client->request('POST', $url, $options);
-		$body = $response->getBody()->getContents();
-		$encoded = json_decode($body, true);
-		if(empty($encoded['access_token'])) {
-			throw new Exception("No access_token found in response from api.instagram.com");
-		}
-		/*
-		* sample response
-		{
-		    "access_token": "fb2e77d.47a0479900504cb3ab4a1f626d174d2d",
-		    "user": {
-		        "id": "1574083",
-		        "username": "snoopdogg",
-		        "full_name": "Snoop Dogg",
-		        "profile_picture": "..."
-		    }
-		}
-		 */
-		$this->InstagramAccessToken = $encoded['access_token'];
-		$this->write();
-		$redirect_link = $this->itemEditLink();
-		header("Location: {$redirect_link}");
-		exit;
-	}
+        $options = ['form_params' => $params ];
+        $response = $client->request('POST', $url, $options);
+        $body = $response->getBody()->getContents();
+        $encoded = json_decode($body, true);
+        if(empty($encoded['access_token'])) {
+            throw new Exception("No access_token found in response from api.instagram.com");
+        }
+        /*
+        * sample response
+        {
+            "access_token": "fb2e77d.47a0479900504cb3ab4a1f626d174d2d",
+            "user": {
+                "id": "1574083",
+                "username": "snoopdogg",
+                "full_name": "Snoop Dogg",
+                "profile_picture": "..."
+            }
+        }
+         */
+        $this->InstagramAccessToken = $encoded['access_token'];
+        $this->write();
+        $redirect_link = $this->itemEditLink();
+        header("Location: {$redirect_link}");
+        exit;
+    }
 
     public function getCMSValidator()
     {
@@ -150,46 +150,46 @@ https://api.instagram.com/oauth/access_token
 
         if($this->ClientID && $this->ClientSecret) {
 
-			$auth_url = $this->getAuthURL();
+            $auth_url = $this->getAuthURL();
 
-			$fields->addFieldToTab(
-	            'Root.Main',
-	            LiteralField::create(
-	                'InstagramAuthInstructions',
-	                '<p class="message">'
-					. _t('SocialFeed.InstagramBasicAuthIntro', 'To use this provider you must get an access token from Instagram at ')
-					. "<br>"
-	                . "<code><a href=\"{$auth_url}\">{$auth_url}</a></code>"
-					. "<br>"
-					. _t('SocialFeed.InstagramBasicAuthHelp', "Please ensure that you are signed into the Instagram account you wish to retrieve a feed from.")
-	                . '</p>'
-	            ),
-				'Label'
-	        );
+            $fields->addFieldToTab(
+                'Root.Main',
+                LiteralField::create(
+                    'InstagramAuthInstructions',
+                    '<p class="message">'
+                    . _t('SocialFeed.InstagramBasicAuthIntro', 'To use this provider you must get an access token from Instagram at ')
+                    . "<br>"
+                    . "<code><a href=\"{$auth_url}\">{$auth_url}</a></code>"
+                    . "<br>"
+                    . _t('SocialFeed.InstagramBasicAuthHelp', "Please ensure that you are signed into the Instagram account you wish to retrieve a feed from.")
+                    . '</p>'
+                ),
+                'Label'
+            );
 
-		} else {
-			$fields->addFieldToTab(
-	            'Root.Main',
-	            LiteralField::create(
-	                'InstagramAuthInstructions',
-	                '<p class="message error">'
-					. _t('SocialFeed.InstagramAuthMissingClientFields', 'To authorise this application you must save the client ID and client secret from https://www.instagram.com/developer/clients/manage/')
-	                . '</p>'
-	            ),
-				'Label'
-	        );
-		}
+        } else {
+            $fields->addFieldToTab(
+                'Root.Main',
+                LiteralField::create(
+                    'InstagramAuthInstructions',
+                    '<p class="message error">'
+                    . _t('SocialFeed.InstagramAuthMissingClientFields', 'To authorise this application you must save the client ID and client secret from https://www.instagram.com/developer/clients/manage/')
+                    . '</p>'
+                ),
+                'Label'
+            );
+        }
 
-		$fields->addFieldToTab(
-			'Root.Main',
-			TextField::create(
-				'InstagramAccessToken',
-				'Instagram Access Token'
-			)->setDescription('Your instagram access token'),
-			'Label'
-		);
+        $fields->addFieldToTab(
+            'Root.Main',
+            TextField::create(
+                'InstagramAccessToken',
+                'Instagram Access Token'
+            )->setDescription('Your instagram access token'),
+            'Label'
+        );
 
-		$fields->makeFieldReadonly( $fields->dataFieldByName('InstagramAccessToken') );
+        $fields->makeFieldReadonly( $fields->dataFieldByName('InstagramAccessToken') );
 
         $fields->addFieldToTab(
             'Root.Main',
@@ -303,9 +303,9 @@ https://api.instagram.com/oauth/access_token
         */
     }
 
-	protected function hydrate($feed) {
-		return json_decode($feed, false);
-	}
+    protected function hydrate($feed) {
+        return json_decode($feed, false);
+    }
 
     public function getPostType($post) {
         return isset($post->typeName) ? $post->typeName : '';
@@ -343,7 +343,7 @@ https://api.instagram.com/oauth/access_token
         if (!empty($post->link)) {
             return $post->link;
         }
-        return null;
+        return '';
     }
 
     /**
@@ -358,6 +358,18 @@ https://api.instagram.com/oauth/access_token
     }
 
     /**
+     * Refer: https://www.instagram.com/developer/embedding/
+     * Appears that 't' is a different aspect ratio to 'm'  and 'l'
+     */
+    private function getEmbedImage($post, $size) {
+        $post_url = rtrim($this->getPostUrl($post), '/');
+        if($post_url) {
+            return  $post_url . "/media/?size=" . $size;
+        }
+        return '';
+    }
+
+    /**
      * Get the primary image for the post
      *
      * @param $post
@@ -365,7 +377,7 @@ https://api.instagram.com/oauth/access_token
      */
     public function getImage($post)
     {
-        return isset($post->displaySrc) ? $post->displaySrc : '';
+        return $this->getEmbedImage($post, 'l');
     }
 
     /**
@@ -376,7 +388,7 @@ https://api.instagram.com/oauth/access_token
      */
     public function getImageLowRes($post)
     {
-        return $this->getImage($post);
+        return $this->getEmbedImage($post, 'm');
     }
 
     /**
@@ -390,7 +402,7 @@ https://api.instagram.com/oauth/access_token
      */
     public function getImageThumb($post)
     {
-        return isset($post->thumbnailSrc) ? $post->thumbnailSrc : '';
+        return $this->getEmbedImage($post, 't');
     }
 
 
