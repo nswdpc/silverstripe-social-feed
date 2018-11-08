@@ -42,7 +42,7 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
                     . ' to create a <a href="https://apps.twitter.com" target="_blank">'
                     . 'Twitter App.</a>'
                     . '<br>You can manually grant permissions to the Twitter App, this will'
-                    . ' give you an Access Token and Access Token Secret.') . '</p>'
+                    . ' give you the Consumer Key + Secret and an Access Token + Access Token Secret.') . '</p>'
             ),
             'Label'
         );
