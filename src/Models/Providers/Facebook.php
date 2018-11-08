@@ -16,6 +16,11 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 
     protected $enabled_api_client = true;
 
+	private static $singular_name = 'Facebook Provider via Graph API';
+    private static $plural_name = 'Facebook Providers via Graph API';
+
+    private static $description = 'Aggregate posts from a Facebook account';
+
     /**
      * Defines the database table name
      * @var string
@@ -35,9 +40,6 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
         'FacebookPageAccessTokenCreated' => 'DBDatetime',
         'FacebookPageAccessTokenExpires' => 'DBDatetime',
     ];
-
-    private static $singular_name = 'Facebook Provider';
-    private static $plural_name = 'Facebook Providers';
 
     private static $summary_fields = [
         'FacebookPageID'

@@ -20,6 +20,8 @@ class InstagramBasicProvider extends SocialFeedProvider implements ProviderInter
     private static $singular_name = 'Instagram Basic Provider';
     private static $plural_name = 'Instagram Basic Providers';
 
+    private static $description = 'Aggregate media from your own Instagram account';
+
     /**
      * Defines the database table name
      * @var string

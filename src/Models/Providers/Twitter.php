@@ -12,6 +12,11 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 
     protected $enabled_api_client = true;
 
+    private static $singular_name = 'Twitter Provider';
+    private static $plural_name = 'Twitter Providers';
+
+    private static $description = 'Aggregate tweets from a Twitter account';
+
     /**
      * Defines the database table name
      * @var string
@@ -25,9 +30,6 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
         'AccessTokenSecret' => 'Varchar(400)',
         'ScreenName' => 'Varchar',
     );
-
-    private static $singular_name = 'Twitter Provider';
-    private static $plural_name = 'Twitter Providers';
 
     public function getCMSFields()
     {
