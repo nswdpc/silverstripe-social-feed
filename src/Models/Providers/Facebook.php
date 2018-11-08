@@ -14,8 +14,6 @@ use DateTime;
 class FacebookProvider extends SocialFeedProvider implements ProviderInterface
 {
 
-    protected $enabled_api_client = true;
-
 	private static $singular_name = 'Facebook Provider via Graph API';
     private static $plural_name = 'Facebook Providers via Graph API';
 

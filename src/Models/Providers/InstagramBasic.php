@@ -15,8 +15,6 @@ use DateTime;
 
 class InstagramBasicProvider extends SocialFeedProvider implements ProviderInterface {
 
-    protected $enabled_api_client = true;
-
     private static $singular_name = 'Instagram Basic Provider';
     private static $plural_name = 'Instagram Basic Providers';
 

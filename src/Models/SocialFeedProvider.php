@@ -5,6 +5,7 @@ use Silverstripe\Control\Director;
 use Silverstripe\Control\Controller;
 use Silverstripe\Forms\CheckboxField;
 use Silverstripe\Forms\DropdownField;
+use Silverstripe\Forms\LiteralField;
 use Silverstripe\ORM\DataObject;
 use Silverstripe\ORM\ArrayList;
 use Silverstripe\ORM\DB;
@@ -21,8 +22,6 @@ use DateTime;
 
 class SocialFeedProvider extends DataObject implements ProviderInterface
 {
-
-	protected $enabled_api_client = true;
 
 	private static $description = '';
 	private static $singular_name = '';
@@ -88,13 +87,6 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 		return $this->Label;
 	}
 
-	/**
-	 * returns whether this api client is shipped enabled
-	 */
-	public function getIsEnabled() {
-		return $this->enabled_api_client;
-	}
-
 	public function getAllowedFeedProviders() {
 		$subclasses = ClassInfo::subclassesFor( self::class );
 		$map = [];
@@ -103,16 +95,10 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 				unset($subclasses[$k]);
 				continue;
 			}
-
 			$sng = singleton($subclass);
-			if(!$sng->getIsEnabled()) {
-				unset($subclasses[$k]);
-				continue;
-			}
 			$map_key = preg_replace("|^SilverstripeSocialFeed\\\\Provider\\\\|", "", $subclass);
 			$provider_description = $sng->config()->get('description');
 			$map[ $map_key ] = $sng->singular_name() . ($provider_description ? " - {$provider_description}" : "");
-
 		}
 		return $map;
 	}

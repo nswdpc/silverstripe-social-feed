@@ -10,8 +10,6 @@ use Exception;
 class TwitterProvider extends SocialFeedProvider implements ProviderInterface
 {
 
-    protected $enabled_api_client = true;
-
     private static $singular_name = 'Twitter Provider';
     private static $plural_name = 'Twitter Providers';
 
