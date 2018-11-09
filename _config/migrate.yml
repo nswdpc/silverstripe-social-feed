@@ -5,5 +5,4 @@ Name: socialfeed_migrate
 SilverStripe\ORM\DatabaseAdmin:
   classname_value_remapping:
     SocialFeedProviderFacebook: 'SilverstripeSocialFeed\Provider\FacebookProvider'
-    SocialFeedProviderInstagram: 'SilverstripeSocialFeed\Provider\InstagramProvider'
     SocialFeedProviderTwitter: 'SilverstripeSocialFeed\Provider\TwitterProvider'
