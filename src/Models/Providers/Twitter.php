@@ -77,10 +77,6 @@ class TwitterProvider extends SocialFeedProvider implements ProviderInterface
         return $result;
     }
 
-	protected function hydrate($feed) {
-		return json_decode($feed, false);
-	}
-
     /**
      * @return DBHTMLText
      * @param stdClass $post

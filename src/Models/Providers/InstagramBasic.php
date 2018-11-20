@@ -303,10 +303,6 @@ https://api.instagram.com/oauth/access_token
         */
     }
 
-    protected function hydrate($feed) {
-        return json_decode($feed, false);
-    }
-
     public function getPostType($post) {
         return isset($post->typeName) ? $post->typeName : '';
     }

@@ -438,10 +438,6 @@ class FacebookProvider extends SocialFeedProvider implements ProviderInterface
         $this->CreatePageAccessToken = 0;
     }
 
-	protected function hydrate($feed) {
-		return json_decode($feed, true);//return as assoc
-	}
-
     public function getPostType($post) {
         return isset($post['type']) ? $post['type'] : '';
     }

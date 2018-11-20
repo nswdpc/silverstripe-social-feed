@@ -303,13 +303,15 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 				} else {
 					$dt = $post_created_date;
 				}
-				$created->setValue( $dt->format( DateTime::ISO8601 ) );
+				$created_date_formatted = $dt->format( DateTime::ISO8601 );
+				$created->setValue( $created_date_formatted );
 				$data[] = array(
 					'Type' => $this->getType(),
 					'PostType' => $this->getPostType($post),
 					'Content' => $this->getPostContent($post),
 					'RawContent' => $this->getPostContent($post, false),
 					'Created' => $created,
+					'CreatedDateTime' => $created_date_formatted,
 					'URL' => $this->getPostUrl($post),
 					'Data' => $post,
 					'UserName' => $this->getUserName($post),
@@ -321,7 +323,7 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 		}
 
 		$result = ArrayList::create($data);
-		$result = $result->sort('Created', 'DESC');
+		$result = $result->sort('CreatedDateTime', 'DESC');
 		return $result;
 	}
 
@@ -346,6 +348,12 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 		return $key;
 	}
 
+	private function isFlushing() {
+		$controller = Controller::curr();
+		$request = $controller->getRequest();
+		return !is_null($request->getVar('flush'));
+	}
+
 	/**
 	 * Get the providers feed from the cache. If there is no cache
 	 * then return false.
@@ -353,6 +361,9 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 	 * @return array
 	 */
 	public function getFeedCache() {
+		if( $this->isFlushing() ) {
+			return false;
+		}
 		$cache = $this->getCacheFactory();
 		$key = $this->getFeedCacheKey();
 		$feed = $cache->get($key);
@@ -360,7 +371,7 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 	}
 
 	protected function hydrate($feed) {
-		throw new Exception($this->class.' missing implementation for '.__FUNCTION__);
+		return unserialize($feed);
 	}
 
 	/**
@@ -372,7 +383,7 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 			$lifetime = $this->config()->default_cache_lifetime;
 		}
 		$key  = $this->getFeedCacheKey();
-		$result = $cache->set($key, json_encode($feed), $lifetime);
+		$result = $cache->set($key, serialize($feed), $lifetime);
 		return $result;
 	}
 
