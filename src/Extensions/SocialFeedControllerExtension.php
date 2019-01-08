@@ -50,7 +50,6 @@ class SocialFeedControllerExtension extends Extension
                 'Feed' => $provider->getFeed()
             ];
         }
-		var_dump($grouped_feed);
         return ArrayList::create( $grouped_feed );
     }
 
