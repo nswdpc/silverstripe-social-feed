@@ -21,6 +21,7 @@
 		"league/oauth2-facebook": "^1.4",
 		"abraham/twitteroauth": "^0.9.2",
 		"pgrimaud/instagram-user-feed": "^4.0",
-		"symbiote/silverstripe-queuedjobs": "~4.0"
+		"symbiote/silverstripe-queuedjobs": "~4.0",
+		"symbiote/silverstripe-gridfieldextensions": "^3.1"
 	}
 }

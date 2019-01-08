@@ -1,6 +1,7 @@
 <?php
 namespace SilverstripeSocialFeed\Provider;
 use SilverstripeSocialFeed\Jobs\SocialFeedCacheQueuedJob;
+use SilverStripe\Forms\TextareaField;
 use Silverstripe\Control\Director;
 use Silverstripe\Control\Controller;
 use Silverstripe\Forms\CheckboxField;
@@ -40,8 +41,10 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 
 	private static $db = array(
 		'Label' => 'Varchar(100)',
+		'Description' => 'Text',
 		'Enabled' => 'Boolean',
 		'LastFeedError' => 'Text',
+		'Sort' => 'Int'
 	);
 
 	private static $summary_fields = array(
@@ -108,6 +111,10 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 	 */
 	public function getCMSFields() {
 		$fields = parent::getCMSFields();
+
+		// remove Sort field
+		$fields->removeByName('Sort');
+
 		if(!$this->exists()) {
 			foreach($fields->dataFields() as $field) {
 				$fields->removeByName([
@@ -133,6 +140,17 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 			// reporting errors
 			$fields->makeFieldReadonly( $fields->dataFieldByName('LastFeedError'));
 		}
+
+		$fields->addFieldToTab(
+			'Root.Main',
+			TextareaField::create(
+				'Description',
+				'Description'
+			),
+			'RefreshFeedFromSource'
+
+		);
+
 		return $fields;
 	}
 
@@ -178,6 +196,10 @@ class SocialFeedProvider extends DataObject implements ProviderInterface
 
 	public function getType() {
 		throw new Exception("Do not instantiate {$this->ClassName}::getType");
+	}
+
+	public function getCssType() {
+		return trim(strtolower(Convert::raw2htmlid($this->getType())));
 	}
 
 	public function getPostType($post) {

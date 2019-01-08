@@ -67,6 +67,10 @@ class InstagramBasicProvider extends SocialFeedProvider implements ProviderInter
         return parent::PROVIDER_INSTAGRAM_BASIC;
     }
 
+    public function getCssType() {
+        return parent::PROVIDER_INSTAGRAM;
+    }
+
     /*
      * This method is called from the controller
          error: access_denied
